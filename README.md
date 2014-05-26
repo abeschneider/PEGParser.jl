@@ -18,14 +18,13 @@ end
 ### Allowed rules
 
 The following rules can be used:
-
-Terminals: Strings and characters
-Or: `a | b | c`
-And: `a + b + c`
-Grouping: `(a + b) | (c + d)`
-One or more: `+((a + b) | (c + d))`
-Zero or more: `*((a + b) | (c + d))`
-Regular expressions: `r"[a-zA-Z]+"
+* Terminals: Strings and characters
+* Or: `a | b | c`
+* And: `a + b + c`
+* Grouping: `(a + b) | (c + d)`
+* One or more: `+((a + b) | (c + d))`
+* Zero or more: `*((a + b) | (c + d))`
+* Regular expressions: `r"[a-zA-Z]+"
 
 #### TODO
 Multiple: `(a+b)^(3, 5)
@@ -107,3 +106,25 @@ result = transform(math, node)
 
 println(result) # 315.0
 ```
+
+## Caveats
+
+This code is not very well tested yet and isn't yet finished, so use at your own risk (I wrote this while on vacation). It is, without any question, a work in progress.
+
+While I have not benchmarked any of this, the hope is that it should be relatively fast. The grammar itself is created using macros. The parsing has very little overhead and additionally has caching. That said, without any benchmarking, this is just conjecture.
+
+Additionally, little to now error checking is performed. The macros probably need some serious review. And while there are a bunch of unit tests, they fall very short from full coverage.
+
+Finally, one thing that I would like to change in the near future is to have transforms look something like:
+
+```julia
+html(node, children, :bold_open) = "<b>"
+html(node, children, :bold_close) = "</b>"
+html(node, children, :text) = node.value
+html(node, children, :bold_text) = join(children)
+
+result = transform(html, node)
+```
+
+If Julia gets dispatch on value, then this would be trivial to write. One possible workaround is to create a type per rule in the grammar. Then the functions can be written to dispatch on the type associated with the given rule.
+
