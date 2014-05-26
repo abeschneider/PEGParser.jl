@@ -24,10 +24,10 @@ The following rules can be used:
 * Grouping: `(a + b) | (c + d)`
 * One or more: `+((a + b) | (c + d))`
 * Zero or more: `*((a + b) | (c + d))`
-* Regular expressions: `r"[a-zA-Z]+"
+* Regular expressions: `r"[a-zA-Z]+"`
 
 #### TODO
-Multiple: `(a+b)^(3, 5)
+Multiple: `(a+b)^(3, 5)`
 
 ## Example 1
 Suppose you want a parser that takes input and converts `[text]` into `<b>text<>`. You can write the following grammar:
