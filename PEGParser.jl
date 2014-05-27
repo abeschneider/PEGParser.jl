@@ -20,8 +20,9 @@ function parse(grammar::Grammar, text::String)
 end
 
 function transform(tr, node)
+  # TODO: should profile this line
   cvalues = filter(el -> el !== nothing, [transform(tr, child) for child in node.children])
-#   cvalues = [transform(tr, child) for child in node.children]
+
   if length(cvalues) == 1
     cvalues = cvalues[1]
   end
@@ -40,7 +41,7 @@ function parse(grammar::Grammar, rule::Rule, text::String, pos, cache)
   # check cache to see if we've been here before
   cacheKey = (rule.name, pos)
 
-  if false && haskey(cache, cacheKey)
+  if haskey(cache, cacheKey)
     # return the derivative rule
     cachedresult = cache[cacheKey]
     return (cachedresult, cachedresult.last, nothing)
