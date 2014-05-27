@@ -4,7 +4,7 @@ import Base.show
 import Base.convert
 import Base.getindex
 
-export Grammar, @grammar, Rule, Terminal, OrRule, AndRule, ReferencedRule, OneOrMoreRule, ZeroOrMoreRule, MultipleRule, RegexRule, show, convert
+export Grammar, @grammar, Rule, Terminal, OrRule, AndRule, ReferencedRule, OneOrMoreRule, ZeroOrMoreRule, MultipleRule, RegexRule, show, convert, *, ?
 
 abstract Rule
 

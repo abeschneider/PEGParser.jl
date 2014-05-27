@@ -8,9 +8,10 @@ type Node
 end
 
 function show(io::IO, node::Node, indent)
-  print(io, "  "^indent)
   println(io, "node($(node.name)) {$(node.value), $(node.ruleType)}")
-  for child in node.children
+  for (i, child) in enumerate(node.children)
+    print(io, "  "^indent)
+    print(io, "$i: ")
     show(io, child, indent+1)
   end
 end

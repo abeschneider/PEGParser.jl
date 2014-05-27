@@ -13,35 +13,34 @@ type ParseError
 end
 
 function parse(grammar::Grammar, text::String)
-  (value, pos, error) = parse(grammar, ReferencedRule(:start), text, 1, Dict{Any, Node}());
+  rule = grammar.rules[:start]
+  (value, pos, error) = parse(grammar, rule, text, 1, Dict{Any, Node}());
 
   return (value, pos, error);
 end
 
 function transform(tr, node)
-  cvalues = [transform(tr, child) for child in node.children]
+  cvalues = filter(el -> el !== nothing, [transform(tr, child) for child in node.children])
+#   cvalues = [transform(tr, child) for child in node.children]
   if length(cvalues) == 1
     cvalues = cvalues[1]
   end
 
   if haskey(tr, node.name)
     fn = tr[node.name]
-    return fn(node, cvalues)
+    result = fn(node, cvalues)
   else
-    return cvalues
+    result = cvalues
   end
-end
 
-function parse(grammar::Grammar, ref::ReferencedRule, text::String, pos, cache)
-  rule = grammar.rules[ref.symbol]
-  return parse(grammar, rule, text, pos, cache)
+  return result
 end
 
 function parse(grammar::Grammar, rule::Rule, text::String, pos, cache)
   # check cache to see if we've been here before
   cacheKey = (rule.name, pos)
 
-  if haskey(cache, cacheKey)
+  if false && haskey(cache, cacheKey)
     # return the derivative rule
     cachedresult = cache[cacheKey]
     return (cachedresult, cachedresult.last, nothing)
@@ -50,11 +49,36 @@ function parse(grammar::Grammar, rule::Rule, text::String, pos, cache)
     (node, pos, error) = uncached_parse(grammar, rule, text, pos, cache)
 
     # store in cache
-    if error === nothing
+    if error === nothing && node !== nothing
       cache[cacheKey] = node;
     end
 
     return (node, pos, error)
+  end
+end
+
+# FIXME: this is ugly, need to think about a better way to do this
+unref{T <: Rule}(node::Node, ::Type{T}) = node
+unref(node::Node, ::Type{ReferencedRule}) = node.children[1]
+unref(node::Node) = unref(node, node.ruleType)
+
+function uncached_parse(grammar::Grammar, ref::ReferencedRule, text::String, pos, cache)
+  rule = grammar.rules[ref.symbol]
+
+  firstPos = pos
+  (childNode, pos, error) = parse(grammar, rule, text, pos, cache)
+
+#   if node !== nothing
+#     node.name = ref.name
+#   end
+
+#   return (node, pos, error)
+
+  if error === nothing && childNode !== nothing
+    node = Node(ref.name, text[firstPos:pos-1], firstPos, pos, [childNode], typeof(ref))
+    return (node, pos, error)
+  else
+    return (nothing, pos, error)
   end
 end
 
@@ -67,7 +91,7 @@ function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos, cache
     (child, pos, error) = parse(grammar, branch, text, pos, cache)
 
     if child !== nothing
-      node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [child], typeof(rule))
+      node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
       return (node, pos, error)
     end
   end
@@ -89,7 +113,9 @@ function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos, cach
       return (nothing, firstPos, error)
     end
 
-    push!(value, child)
+    if child !== nothing
+      push!(value, unref(child))
+    end
   end
 
   node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, value, typeof(rule))
@@ -117,7 +143,7 @@ function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos, cac
   size = length(rule.value)
   if string_matches(rule.value, text, pos, pos+size)
     node = Node(rule.name, text[pos:pos+size-1], pos, pos+size, [], typeof(rule));
-    return (node, pos+size, nothing)
+    return (unref(node), pos+size, nothing)
   end
 
   return (nothing, pos, ParseError("'$text' does not match '$(rule.value)'.", pos))
@@ -134,12 +160,12 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos
   end
 
   # and continue making matches for as long as we can
-  children = {child}
+  children = {unref(child)}
   while error == nothing
     (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
 
-    if error == nothing
-      push!(children, child)
+    if error == nothing && child !== nothing
+      push!(children, unref(child))
     end
   end
 
@@ -155,12 +181,17 @@ function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, po
   while error == nothing
     (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
 
-    if error == nothing
-      push!(children, child)
+    if error == nothing && child !== nothing
+      push!(children, unref(child))
     end
   end
 
-  node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
+  if length(children) > 0
+    node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
+  else
+    node = nothing
+  end
+
   return (node, pos, nothing)
 end
 
@@ -171,7 +202,7 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos, ca
   value = match(rule.value, text[firstPos:end])
   if value !== nothing
     pos += length(value.match)
-    node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [], typeof(rule))
+    node = unref(Node(rule.name, text[firstPos:pos-1], firstPos, pos, [], typeof(rule)))
     error = nothing;
   else
     node = nothing
