@@ -4,7 +4,7 @@ import Base.show
 import Base.convert
 import Base.getindex
 
-export Grammar, @grammar, Rule, Terminal, OrRule, AndRule, ReferencedRule, OneOrMoreRule, ZeroOrMoreRule, MultipleRule, RegexRule, show, convert, *, ?
+export Grammar, @grammar, Rule, Terminal, OrRule, AndRule, ReferencedRule, OneOrMoreRule, ZeroOrMoreRule, MultipleRule, RegexRule, OptionalRule, show, convert, *, ?
 
 abstract Rule
 
@@ -85,6 +85,15 @@ type RegexRule <: Rule
 
   function RegexRule(value)
     return new(generateRuleName(), Regex("^$(value.pattern)"))
+  end
+end
+
+type OptionalRule <: Rule
+  name
+  value
+
+  function OptionalRule(value)
+    return new(generateRuleName(), value)
   end
 end
 
@@ -180,19 +189,21 @@ function parseDefinition(expr::Expr)
     # check if this is infix or prefix
     if length(expr.args) > 2
       # Addition can contain multiple entries
-      values = [parseDefinition(arg) for arg in expr.args[2:end]];
-      return reduce(+, values);
+      values = [parseDefinition(arg) for arg in expr.args[2:end]]
+      return reduce(+, values)
     else
       # it's prefix, so it maps to one or more rule
-      return OneOrMoreRule(parseDefinition(expr.args[2]));
+      return OneOrMoreRule(parseDefinition(expr.args[2]))
     end
   elseif expr.args[1] === :^
     # an entry can appear N:M times
-    count = expr.args[3];
+    count = expr.args[3]
     return MultipleRule(expr.args[2], count.args[1], count.args[2]);
   elseif expr.args[1] === :* && length(expr.args) == 2
     # it's a prefix, so it maps to zero or more rule
-    return ZeroOrMoreRule(parseDefinition(expr.args[2]));
+    return ZeroOrMoreRule(parseDefinition(expr.args[2]))
+  elseif expr.args[1] == :?
+    return OptionalRule(parseDefinition(expr.args[2]))
   end
 end
 

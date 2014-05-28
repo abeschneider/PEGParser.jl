@@ -213,4 +213,17 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos, ca
   return (node, pos, error)
 end
 
+function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos, cache::Dict)
+  firstPos = pos
+  (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
+
+  if error === nothing
+    node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
+    return (node, pos, error)
+  end
+
+  # no error, but we also don't move the position or return a valid node
+  return (nothing, firstPos, nothing)
+end
+
 end
