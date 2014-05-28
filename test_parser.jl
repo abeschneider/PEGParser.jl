@@ -170,7 +170,6 @@ end
 
 
 @test begin
-  # NB: need to guard against ':>' binding with '*'
   @grammar grammar begin
     rule = *('a' + 'b')
   end
@@ -183,7 +182,7 @@ end
 
   # this is okay, we can match nothing as well
   (node, pos, error) = parse(grammar, ReferencedRule(:rule), "", 1, Dict())
-  if node.value != "" || error != nothing || pos != 1
+  if node !== nothing || error != nothing || pos != 1
     return false
   end
 
