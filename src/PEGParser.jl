@@ -1,5 +1,5 @@
 module PEGParser
-import Base.show
+import Base: show, parse
 
 include("EBNF.jl")
 using .EBNF
