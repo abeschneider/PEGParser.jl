@@ -1,10 +1,12 @@
 module PEGParser
-using EBNF
 import Base.show
+
+include("EBNF.jl")
+using .EBNF
 
 include("Node.jl")
 
-export parse, transform, ParseError
+export parse, transform, ParseError, @grammar
 
 
 type ParseError
