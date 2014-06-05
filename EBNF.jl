@@ -4,7 +4,9 @@ import Base.show
 import Base.convert
 import Base.getindex
 
-export Grammar, @grammar, Rule, Terminal, OrRule, AndRule, ReferencedRule, OneOrMoreRule, ZeroOrMoreRule, MultipleRule, RegexRule, OptionalRule, show, convert, *, ?
+export Grammar, @grammar, @rule, Rule, Terminal, OrRule, AndRule, ReferencedRule
+export OneOrMoreRule, ZeroOrMoreRule, MultipleRule, RegexRule, OptionalRule, show, convert, *, ?
+export addRuleType, displayRuleTypes
 
 abstract Rule
 
@@ -219,10 +221,59 @@ function parseGrammar(expr::Expr)
   return Grammar(rules)
 end
 
-macro grammar(name, expr)
+function parseTransform(expr::Expr)
+  transform = Transform()
+
+  for definition in expr.args[2:2:end]
+    println("def = $definition")
+  end
+end
+
+ruletosymbol = Dict{String, Type}()
+
+function addRuleType(name::String, typ::Type)
+  ruletosymbol["$name.$rulename"] = typ
+end
+
+function displayRuleTypes()
+  println(ruletosymbol)
+end
+
+# macro makeType(name) :(type $(esc(name)) end) end
+# macro rule(grammar, rule)
+#   local grammarname = string(grammar)[2:end]
+#   local rulename = string(rule)[2:end]
+#   value = quote
+#     ::Type{$(esc(symbol("grammar_$(grammarname)_$(rulename)")))}
+#   end
+
+#   return value
+# end
+
+macro grammar(name::Symbol, expr)
   quote
     $(esc(name)) = $(parseGrammar(expr))
   end
+
+#   local grammar = parseGrammar(string(name), expr)
+#   args = {}
+#   push!(args, :($(esc(name)) = $(grammar)))
+
+#   for rulename in keys(grammar.rules)
+#     local typename = "$(name).$(rulename)"
+#     push!(args, :(type $(esc(symbol(typename))) end))
+#     push!(args, :(addRuleType($(esc(typename)), $(symbol(typename)))))
+#   end
+
+#   return Expr(:block, args...)
+end
+
+type Transform
+  actions::Dict{String, Function}
+end
+
+macro transform(name, expr)
+  parseTransform()
 end
 
 function *(rule::Rule) end

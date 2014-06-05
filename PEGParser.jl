@@ -4,12 +4,20 @@ import Base.show
 
 include("Node.jl")
 
-export parse, transform, ParseError
-
+export parse, apply, ParseError, @transform
 
 type ParseError
-  msg
-  pos
+  msg::String
+  pos::Int64
+end
+
+type Transform
+  name::String
+  actions::Dict{String, Function}
+
+  function Transform(name::String)
+    new(name, Dict{String, Function}())
+  end
 end
 
 function parse(grammar::Grammar, text::String)
@@ -19,22 +27,43 @@ function parse(grammar::Grammar, text::String)
   return (value, pos, error);
 end
 
-function transform(tr, node)
+function apply(transform::Transform, node)
   # TODO: should profile this line
-  cvalues = filter(el -> el !== nothing, [transform(tr, child) for child in node.children])
+  cvalues = filter(el -> el !== nothing, [apply(transform, child) for child in node.children])
 
   if length(cvalues) == 1
     cvalues = cvalues[1]
   end
 
-  if haskey(tr, node.name)
-    fn = tr[node.name]
-    result = fn(node, cvalues)
+  if haskey(transform.actions, node.name)
+    fn = transform.actions[node.name]
   else
-    result = cvalues
+    fn = transform.actions["default"]
   end
 
-  return result
+  return fn(node, cvalues)
+end
+
+#     $(esc(quote ($x, $y) -> $expr end))
+macro transform(header, expr)
+  local name = header
+  local sname = string(header)
+
+  local args = {}
+  push!(args, :($(esc(header)) = Transform($sname)))
+
+  for definition in expr.args[2:2:end]
+    rulename = string(definition.args[1])
+    rule = definition.args[2]
+
+    node = :node
+    children = :children
+    push!(args, quote
+      $(esc(name)).actions[$(rulename)] = $(esc(quote ($node, $children) -> $rule end))
+    end)
+  end
+
+  return Expr(:block, args...)
 end
 
 function parse(grammar::Grammar, rule::Rule, text::String, pos, cache)
@@ -68,12 +97,6 @@ function uncached_parse(grammar::Grammar, ref::ReferencedRule, text::String, pos
 
   firstPos = pos
   (childNode, pos, error) = parse(grammar, rule, text, pos, cache)
-
-#   if node !== nothing
-#     node.name = ref.name
-#   end
-
-#   return (node, pos, error)
 
   if error === nothing && childNode !== nothing
     node = Node(ref.name, text[firstPos:pos-1], firstPos, pos, [childNode], typeof(ref))
