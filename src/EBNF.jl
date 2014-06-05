@@ -239,33 +239,10 @@ function displayRuleTypes()
   println(ruletosymbol)
 end
 
-# macro makeType(name) :(type $(esc(name)) end) end
-# macro rule(grammar, rule)
-#   local grammarname = string(grammar)[2:end]
-#   local rulename = string(rule)[2:end]
-#   value = quote
-#     ::Type{$(esc(symbol("grammar_$(grammarname)_$(rulename)")))}
-#   end
-
-#   return value
-# end
-
 macro grammar(name::Symbol, expr)
   quote
     $(esc(name)) = $(parseGrammar(expr))
   end
-
-#   local grammar = parseGrammar(string(name), expr)
-#   args = {}
-#   push!(args, :($(esc(name)) = $(grammar)))
-
-#   for rulename in keys(grammar.rules)
-#     local typename = "$(name).$(rulename)"
-#     push!(args, :(type $(esc(symbol(typename))) end))
-#     push!(args, :(addRuleType($(esc(typename)), $(symbol(typename)))))
-#   end
-
-#   return Expr(:block, args...)
 end
 
 type Transform

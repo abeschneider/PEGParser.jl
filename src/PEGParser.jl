@@ -5,7 +5,7 @@ using EBNF
 
 include("Node.jl")
 
-export parse, apply, ParseError, @transform
+export parse, apply, applyDebug, ParseError, @transform
 
 type ParseError
   msg::String
@@ -45,7 +45,25 @@ function apply(transform::Transform, node)
   return fn(node, cvalues)
 end
 
-#     $(esc(quote ($x, $y) -> $expr end))
+function applyDebug(transform::Transform, node)
+  # TODO: should profile this line
+  cvalues = filter(el -> el !== nothing, [applyDebug(transform, child) for child in node.children])
+  println("node: $(node.name) = $(node.value)")
+  println("\tcvalues = $cvalues")
+
+  if length(cvalues) == 1
+    cvalues = cvalues[1]
+  end
+
+  if haskey(transform.actions, node.name)
+    fn = transform.actions[node.name]
+  else
+    fn = transform.actions["default"]
+  end
+
+  return fn(node, cvalues)
+end
+
 macro transform(header, expr)
   local name = header
   local sname = string(header)

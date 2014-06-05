@@ -215,31 +215,38 @@ end
 end
 
 # TODO: fix
-# @test begin
-#   @grammar grammar begin
-#     start = expr
-#     number = r"[0-9]+"
-#     expr = (term + op1 + expr) | term
-#     term = (factor + op2 + term) | factor
-#     factor = number | pfactor
-#     pfactor = ('(' + expr + ')')
-#     op1 = '+' | '-'
-#     op2 = '*' | '/'
-#   end
+@test begin
+  @grammar grammar begin
+    start = expr
+    number = r"[0-9]+"
+    expr = (term + op1 + expr) | term
+    term = (factor + op2 + term) | factor
+    factor = number | pfactor
+    pfactor = (lparen + expr + rparen)
+    op1 = ('+' | '-') + space
+    op2 = ('*' | '/') + space
+    lparen = "(" + space
+    rparen = ")" + space
+    space = r"[ \t\n]*"
+  end
 
-#   (ast, pos, error) = parse(grammar, "5*(42+3+6+10+2)")
+  (ast, pos, error) = parse(grammar, "5*(42+3+6+10+2)")
 
-#   @transform tovalue begin
-#     default = nothing
-#     number = float(node.value)
-#     expr = length(children) == 1 ? children : eval(Expr(:call, children[2], children[1], children[3]))
-#     factor = children
-#     pfactor = children[2]
-#     term = length(children) == 1 ? children : eval(Expr(:call, children[2], children[1], children[3]))
-#     op1 = symbol(node.value)
-#     op2 = symbol(node.value)
-#   end
+  @transform tovalue begin
+    lparen = nothing
+    rparen = nothing
 
-#   result = apply(tovalue, ast)
-#   return result == 315.0
-# end
+    default = children
+    start = children
+    number = float(node.value)
+    expr = length(children) == 1 ? children : eval(Expr(:call, children[2], children[1], children[3]))
+    factor = children
+    pfactor = children
+    term = length(children) == 1 ? children : eval(Expr(:call, children[2], children[1], children[3]))
+    op1 = symbol(node.value)
+    op2 = symbol(node.value)
+  end
+
+  result = apply(tovalue, ast)
+  return result == 315.0
+end
