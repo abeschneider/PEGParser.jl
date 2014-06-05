@@ -1,6 +1,7 @@
 module PEGParser
+import Base: show, parse
+
 using EBNF
-import Base.show
 
 include("Node.jl")
 

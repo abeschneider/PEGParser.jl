@@ -22,6 +22,7 @@ The following rules can be used:
 * Or: `a | b | c`
 * And: `a + b + c`
 * Grouping: `(a + b) | (c + d)`
+* Optional: ?(a + b)
 * One or more: `+((a + b) | (c + d))`
 * Zero or more: `*((a + b) | (c + d))`
 * Regular expressions: `r"[a-zA-Z]+"`
@@ -38,7 +39,7 @@ Suppose you want a parser that takes input and converts `[text]` into `<b>text<>
   start = bold_text
 
   # compose a sequence
-  bold_text = bold_open + text + bold_clode
+  bold_text = bold_open + text + bold_code
 
   # use a regular expression to define the text
   text = r"[a-zA-z]"
