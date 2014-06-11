@@ -1,10 +1,21 @@
-type Node
+immutable Node
   name::String
   value::String
-  first::Uint64
-  last::Uint64
+  first::Int64
+  last::Int64
   children::Array{Node}
   ruleType::Type
+  sym::Any
+
+  function Node(name::String, value::String, first::Int64, last::Int64, children::Array, ruleType::Type)
+    if length(name) == 0
+      sym = nothing
+    else
+      sym = symbol(name)
+    end
+
+    return new(name, value, first, last, children, ruleType, sym)
+  end
 end
 
 # macro getType(grammarname, rulename)

@@ -16,86 +16,122 @@ end
 
 generateRuleName() = randstring(10)
 
-type Terminal <: Rule
-  name
-  value
+immutable Terminal <: Rule
+  name::String
+  value::Any
 
-  function Terminal(value)
-    return new(generateRuleName(), value);
+  function Terminal(name::String, value::Any)
+    return new(name, value);
+  end
+
+  function Terminal(value::Any)
+    return new("", value);
   end
 end
 
-type ReferencedRule <: Rule
-  name
-  symbol
+immutable ReferencedRule <: Rule
+  name::String
+  symbol::Symbol
 
-  function ReferencedRule(symbol)
-    return new(generateRuleName(), symbol)
+  function ReferencedRule(name::String, symbol::Symbol)
+    return new(name, symbol)
+  end
+
+  function ReferencedRule(symbol::Symbol)
+    return new("", symbol)
   end
 end
 
-type AndRule <: Rule
-  name
-  values
+immutable AndRule <: Rule
+  name::String
+  values::Array{Rule}
 
-  function AndRule(value)
-    return new(generateRuleName(), value);
+  function AndRule(name::String, values::Array{Rule})
+    return new(name, values)
+  end
+
+  function AndRule(values::Array{Rule})
+    return new("", values);
   end
 end
 
-type OrRule <: Rule
-  name
-  values
+immutable OrRule <: Rule
+  name::String
+  values::Array{Rule}
 
-  function OrRule(values)
-    return new(generateRuleName(), values);
+  function OrRule(name::String, values::Array{Rule})
+    return new(name, values)
+  end
+
+  function OrRule(values::Array{Rule})
+    return new("", values);
   end
 end
 
-type OneOrMoreRule <: Rule
-  name
-  value
+immutable OneOrMoreRule <: Rule
+  name::String
+  value::Rule
 
-  function OneOrMoreRule(value)
-    return new(generateRuleName(), value);
+  function OneOrMoreRule(name::String, value::Rule)
+    return new(name, value)
+  end
+
+  function OneOrMoreRule(value::Rule)
+    return new("", value);
   end
 end
 
-type ZeroOrMoreRule <: Rule
-  name
-  value
+immutable ZeroOrMoreRule <: Rule
+  name::String
+  value::Rule
 
-  function ZeroOrMoreRule(value)
-    return new (generateRuleName(), value);
+  function ZeroOrMoreRule(name::String, value::Rule)
+    return new(name, value)
+  end
+
+  function ZeroOrMoreRule(value::Rule)
+    return new ("", value);
   end
 end
 
-type MultipleRule <: Rule
-  name
-  value
-  minCount
-  maxCount
+immutable MultipleRule <: Rule
+  name::String
+  value::Rule
+  minCount::Int64
+  maxCount::Int64
 
-  function MultipleRule(value, minCount, maxCount)
-    return new(generateRuleName(), value, minCount, maxCount);
+  function MultipleRule(name::String, value::Rule, minCount::Int64, maxCount::Int64)
+    return new(name, value, minCount, maxCount)
+  end
+
+  function MultipleRule(value::Rule, minCount::Int64, maxCount::Int64)
+    return new("", value, minCount, maxCount);
   end
 end
 
-type RegexRule <: Rule
-  name
-  value
+immutable RegexRule <: Rule
+  name::String
+  value::Regex
 
-  function RegexRule(value)
-    return new(generateRuleName(), Regex("^$(value.pattern)"))
+  function RegexRule(name::String, value::Regex)
+    return new(name, value)
+  end
+
+  function RegexRule(value::Regex)
+    return new("", Regex("^$(value.pattern)"))
   end
 end
 
-type OptionalRule <: Rule
-  name
-  value
+immutable OptionalRule <: Rule
+  name::String
+  value::Rule
 
-  function OptionalRule(value)
-    return new(generateRuleName(), value)
+  function OptionalRule(name::String, value::Rule)
+    return new(name, value)
+  end
+
+  function OptionalRule(value::Rule)
+    return new("", value)
   end
 end
 
@@ -154,48 +190,58 @@ function convert{T}(::Type{Rule}, n::UnitRange{T})
   return OrRule(terminals);
 end
 
-function parseDefinition(value::String)
-  return Terminal(value);
+function parseDefinition(name::String, value::String)
+  return Terminal(name, value);
 end
 
-function parseDefinition(value::Char)
-  return Terminal(value);
+function parseDefinition(name::String, value::Char)
+  return Terminal(name, value);
 end
 
-function parseDefinition(symbol::Symbol)
-  return ReferencedRule(symbol)
+function parseDefinition(name::String, symbol::Symbol)
+  return ReferencedRule(name, symbol)
 end
 
-function parseDefinition(range::UnitRange)
+function parseDefinition(name::String, range::UnitRange)
   values = [Terminal(value) for value in range];
-  return OrRule(values);
+  return OrRule(name, values);
 end
 
-function parseDefinition(regex::Regex)
-  return RegexRule(regex)
+function parseDefinition(name::String, regex::Regex)
+  # TODO: Need to do this to ensure we always match at the beginning,
+  # but there should be a safer way to do this
+  modRegex = Regex("^$(regex.pattern)")
+  return RegexRule(name, modRegex)
 end
 
-function parseDefinition(expr::Expr)
+type EmptyRule <: Rule
+end
+
+function parseDefinition(name::String, expr::Expr)
   # if it's a macro (e.g. r"regex", then we want to expand it first)
   if expr.head === :macrocall
-    return parseDefinition(eval(expr))
+    return parseDefinition(name, eval(expr))
   end
 
   if expr.args[1] === :|
-    first = parseDefinition(expr.args[2]);
-    second = parseDefinition(expr.args[3]);
+    #left = parseDefinition("$name.left", expr.args[2]);
+    left = parseDefinition("", expr.args[2]);
+    #right = parseDefinition("$name.right", expr.args[3]);
+    right = parseDefinition("", expr.args[3]);
 
     # Or is always handled in a binary manner
-    return first | second;
+    rules::Array{Rule} = [left, right]
+    return OrRule(name, rules)
   elseif expr.args[1] === :+
     # check if this is infix or prefix
     if length(expr.args) > 2
       # Addition can contain multiple entries
-      values = [parseDefinition(arg) for arg in expr.args[2:end]]
-      return reduce(+, values)
+      #values::Array{Rule} = [parseDefinition("$name.$i", arg) for (i, arg) in enumerate(expr.args[2:end])]
+      values::Array{Rule} = [parseDefinition("", arg) for (i, arg) in enumerate(expr.args[2:end])]
+      return AndRule(name, values)
     else
       # it's prefix, so it maps to one or more rule
-      return OneOrMoreRule(parseDefinition(expr.args[2]))
+      return OneOrMoreRule(parseDefinition(name, expr.args[2]))
     end
   elseif expr.args[1] === :^
     # an entry can appear N:M times
@@ -203,18 +249,19 @@ function parseDefinition(expr::Expr)
     return MultipleRule(expr.args[2], count.args[1], count.args[2]);
   elseif expr.args[1] === :* && length(expr.args) == 2
     # it's a prefix, so it maps to zero or more rule
-    return ZeroOrMoreRule(parseDefinition(expr.args[2]))
+    return ZeroOrMoreRule(parseDefinition(name, expr.args[2]))
   elseif expr.args[1] == :?
-    return OptionalRule(parseDefinition(expr.args[2]))
+    return OptionalRule(parseDefinition(name, expr.args[2]))
   end
+
+  return EmptyRule()
 end
 
 function parseGrammar(expr::Expr)
   rules = Dict()
 
   for definition in expr.args[2:2:end]
-    rule = parseDefinition(definition.args[2])
-    rule.name = string(definition.args[1])
+    rule = parseDefinition(string(definition.args[1]), definition.args[2])
     rules[string(definition.args[1])] = rule
   end
 

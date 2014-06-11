@@ -5,113 +5,77 @@ using EBNF
 
 include("Node.jl")
 
-export parse, apply, applyDebug, ParseError, @transform
+export parse, ParseError, transform, MatchRule, Node
 
 type ParseError
   msg::String
   pos::Int64
 end
 
-type Transform
-  name::String
-  actions::Dict{String, Function}
-
-  function Transform(name::String)
-    new(name, Dict{String, Function}())
-  end
-end
+type MatchRule{T} end
 
 function parse(grammar::Grammar, text::String)
   rule = grammar.rules[:start]
   (value, pos, error) = parse(grammar, rule, text, 1, Dict{Any, Node}());
 
+  # TODO: check that the entire string was matched
+
   return (value, pos, error);
 end
 
-function apply(transform::Transform, node)
-  # TODO: should profile this line
-  cvalues = filter(el -> el !== nothing, [apply(transform, child) for child in node.children])
+# TODO: This code looks ugly. Can it be cleaned up a little?
+function transform(fn::Function, node::Node)
+  cvalues = filter(el -> el !== nothing,
+    [transform(fn, child) for child in node.children])
 
   if length(cvalues) == 1
     cvalues = cvalues[1]
   end
 
-  if haskey(transform.actions, node.name)
-    fn = transform.actions[node.name]
+  if isempty(cvalues)
+    cvalues = nothing
+  end
+
+  if node.sym !== nothing
+    label = MatchRule{node.sym}()
   else
-    fn = transform.actions["default"]
+    label = MatchRule{:default}()
   end
 
-  return fn(node, cvalues)
+  return fn(node, cvalues, label)
 end
 
-function applyDebug(transform::Transform, node)
-  # TODO: should profile this line
-  cvalues = filter(el -> el !== nothing, [applyDebug(transform, child) for child in node.children])
-  println("node: $(node.name) = $(node.value)")
-  println("\tcvalues = $cvalues")
+unref{T <: Rule}(node::Node, ::Type{T}) = node
+unref(node::Node, ::Type{ReferencedRule}) = node.children[1]
+unref(node::Node) = unref(node, node.ruleType)
 
-  if length(cvalues) == 1
-    cvalues = cvalues[1]
-  end
 
-  if haskey(transform.actions, node.name)
-    fn = transform.actions[node.name]
-  else
-    fn = transform.actions["default"]
-  end
+function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::Dict{Any, Node})
+  cacheKey = pos
 
-  return fn(node, cvalues)
-end
-
-macro transform(header, expr)
-  local name = header
-  local sname = string(header)
-
-  local args = {}
-  push!(args, :($(esc(header)) = Transform($sname)))
-
-  for definition in expr.args[2:2:end]
-    rulename = string(definition.args[1])
-    rule = definition.args[2]
-
-    node = :node
-    children = :children
-    push!(args, quote
-      $(esc(name)).actions[$(rulename)] = $(esc(quote ($node, $children) -> $rule end))
-    end)
-  end
-
-  return Expr(:block, args...)
-end
-
-function parse(grammar::Grammar, rule::Rule, text::String, pos, cache)
-  # check cache to see if we've been here before
-  cacheKey = (rule.name, pos)
-
-  if haskey(cache, cacheKey)
+  if haskey(cache, cacheKey) #&& cache[cacheKey] !== nothing
     # return the derivative rule
     cachedresult = cache[cacheKey]
-    return (cachedresult, cachedresult.last, nothing)
+
+    if cachedresult !== nothing
+      return (cachedresult, cachedresult.last, nothing)
+    else
+      return (nothing, pos, nothing)
+    end
   else
     # it's not cached, so compute results
     (node, pos, error) = uncached_parse(grammar, rule, text, pos, cache)
 
     # store in cache
     if error === nothing && node !== nothing
-      cache[cacheKey] = node;
+      cache[cacheKey] = node
     end
 
     return (node, pos, error)
   end
 end
 
-# FIXME: this is ugly, need to think about a better way to do this
-unref{T <: Rule}(node::Node, ::Type{T}) = node
-unref(node::Node, ::Type{ReferencedRule}) = node.children[1]
-unref(node::Node) = unref(node, node.ruleType)
-
-function uncached_parse(grammar::Grammar, ref::ReferencedRule, text::String, pos, cache)
+function uncached_parse(grammar::Grammar, ref::ReferencedRule, text::String, pos::Int64, cache::Dict{Any, Node})
   rule = grammar.rules[ref.symbol]
 
   firstPos = pos
@@ -125,7 +89,7 @@ function uncached_parse(grammar::Grammar, ref::ReferencedRule, text::String, pos
   end
 end
 
-function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos, cache::Dict)
+function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos::Int64, cache::Dict{Any, Node})
   # Try branches in order (left to right). The first branch to match will be marked
   # as a success. If no branches match, then return an error.
 
@@ -143,7 +107,7 @@ function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos, cache
   return (nothing, pos, ParseError("No matching branches", pos))
 end
 
-function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos, cache::Dict)
+function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos::Int64, cache::Dict{Any, Node})
   firstPos = pos;
 
   # All items in sequence must match, otherwise give an error
@@ -182,7 +146,7 @@ function string_matches(expected::String, actual::String, first, last)
   return expected == actual[first:last-1];
 end
 
-function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos, cache::Dict)
+function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos::Int64, cache::Dict{Any, Node})
   size = length(rule.value)
   if string_matches(rule.value, text, pos, pos+size)
     node = Node(rule.name, text[pos:pos+size-1], pos, pos+size, [], typeof(rule));
@@ -193,7 +157,7 @@ function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos, cac
 end
 
 # TODO: look into making this more streamlined
-function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos, cache::Dict)
+function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos::Int64, cache::Dict{Any, Node})
   firstPos = pos
   (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
 
@@ -216,13 +180,13 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos
   return (node, pos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, pos, cache::Dict)
+function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, pos::Int64, cache::Dict{Any, Node})
   firstPos = pos
   children = {}
 
   error = nothing
   while error == nothing
-    (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
+    (child, pos, error) = parse(grammar, rule.value, text, pos::Int64, cache::Dict{Any, Node})
 
     if error == nothing && child !== nothing
       push!(children, unref(child))
@@ -238,7 +202,7 @@ function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, po
   return (node, pos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos, cache::Dict)
+function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::Int64, cache::Dict{Any, Node})
   firstPos = pos;
 
   # use regex match
@@ -246,7 +210,7 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos, ca
   if value !== nothing
     pos += length(value.match)
     node = unref(Node(rule.name, text[firstPos:pos-1], firstPos, pos, [], typeof(rule)))
-    error = nothing;
+    error = nothing
   else
     node = nothing
     error = ParseError("Could not match RegEx", pos)
@@ -255,7 +219,7 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos, ca
   return (node, pos, error)
 end
 
-function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos, cache::Dict)
+function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos::Int64, cache::Dict{Any, Node})
   firstPos = pos
   (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
 
