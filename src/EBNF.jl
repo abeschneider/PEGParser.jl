@@ -18,14 +18,18 @@ generateRuleName() = randstring(10)
 
 immutable Terminal <: Rule
   name::String
-  value::Any
+  value::String
 
-  function Terminal(name::String, value::Any)
-    return new(name, value);
+  function Terminal(name::String, value::String)
+    return new(name, SubString(value, 1));
   end
 
-  function Terminal(value::Any)
-    return new("", value);
+  function Terminal(name::String, value::Char)
+    return new(name, "$value");
+  end
+
+  function Terminal(value::String)
+    return new("", SubString(value, 1));
   end
 end
 

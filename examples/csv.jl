@@ -39,15 +39,8 @@ end
 
 
 toarrays(node::Node, cvalues, ::MatchRule{:default}) = cvalues
-toarrays(node::Node, cvalues, ::MatchRule{:start}) = cvalues
-toarrays(node::Node, cvalues, ::MatchRule{:crlf}) = nothing
-toarrays(node::Node, cvalues, ::MatchRule{:comma}) = nothing
-toarrays(node::Node, cvalues, ::MatchRule{:lf}) = nothing
-toarrays(node::Node, cvalues, ::MatchRule{:cr}) = nothing
-toarrays(node::Node, cvalues, ::MatchRule{:dquote}) = nothing
 toarrays(node::Node, cvalues, ::MatchRule{:escaped_field}) = node.children[2].value
 toarrays(node::Node, cvalues, ::MatchRule{:unescaped_field}) = node.children[1].value
-toarrays(node::Node, cvalues, ::MatchRule{:field}) = cvalues
 toarrays(node::Node, cvalues, ::MatchRule{:record}) = flatten(cvalues)
 toarrays(node::Node, cvalues, ::MatchRule{:data}) = flatten(cvalues)
 toarrays(node::Node, cvalues, ::MatchRule{:textdata}) = node.value
@@ -56,10 +49,10 @@ toarrays(node::Node, cvalues, ::MatchRule{:textdata}) = node.value
 testdir = "/home/abraham/.julia/v0.3/DataFrames/test"
 
 # filename = "$testdir/data/padding/space_after_delimiter.csv"
-#filename = "$testdir/data/scaling/10000rows.csv"
+# filename = "$testdir/data/scaling/10000rows.csv"
 filename = "test.csv"
 #println("reading data")
-#data = open(readall, filename)
+# data = open(readall, filename)
 data = """
 1,2,3
 4,5,6
@@ -67,18 +60,16 @@ this,is,a,"test"
 """
 
 # println("parsing data")
-(ast, pos, error) = parse(csv, data)
-
-println(ast)
-
-result = transform(toarrays, ast)
-println(result)
+# (ast, pos, error) = parse(csv, data)
+# println(ast)
+# result = transform(toarrays, ast)
+# println(result)
 
 # println(ast)
-#println("running JIT...")
-#parse(csv, data)
-#println("doing speed test")
-#@time parse(csv, data)
+# println("running JIT...")
+(ast, pos, error) = parse(csv, data)
+# println("doing speed test")
+# @time parse(csv, data)
 # Profile.print()
 # println(ast)
 
@@ -87,8 +78,8 @@ println(result)
 
 
 # println("transforming data")
-# result = apply(toarrays, ast)
-# println(result)
+result = transform(toarrays, ast, ignore=[:crlf, :comma, :lf, :cr, :dquote])
+println(result)
 
 #   "$testdir/data/newlines/os9.csv",
 #   "$testdir/data/newlines/osx.csv",

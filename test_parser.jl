@@ -12,7 +12,7 @@ using PEGParser
     rule = 'a'
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "a", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "a", 1, Dict{Int64, Node}())
 
   # we should get the literal back, no error should occur, and our
   # position should move forward
@@ -28,7 +28,7 @@ end
     rule = 'a'
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "b", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "b", 1, Dict{Int64, Node}())
 
   # we should get nothing back for a value, but get a ParseError,
   # and the position should not move forward
@@ -44,7 +44,7 @@ end
     rule = 'a' | 'b' | "cde"
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "a", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "a", 1, Dict{Int64, Node}())
 
   # we should get the first branch
   if node.value != "a" || error != nothing || pos != 2
@@ -59,7 +59,7 @@ end
     rule = 'a' | 'b' | "cde"
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "b", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "b", 1, Dict{Int64, Node}())
 
   # we should get the second branch
   if node.value != "b" || error != nothing || pos != 2
@@ -74,7 +74,7 @@ end
     rule = 'a' | 'b' | "cde"
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "cde", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "cde", 1, Dict{Int64, Node}())
 
   if node.value != "cde" || error != nothing || pos != 4
     return false
@@ -88,7 +88,7 @@ end
     rule = 'a' | 'b' | "cde"
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "foo", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "foo", 1, Dict{Int64, Node}())
 
   if node != nothing || !isa(error, ParseError) || pos != 1
     return false
@@ -102,7 +102,7 @@ end
     rule = 'a' + 'b' + "cde"
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "abcde", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "abcde", 1, Dict{Int64, Node}())
 
   if node.value != "abcde" || error != nothing || pos != 6
     return false
@@ -116,20 +116,20 @@ end
     rule = ('a' + 'b') | ('c' + 'd')
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "ab", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "ab", 1, Dict{Int64, Node}())
 
   if node.value != "ab" || error != nothing || pos != 3
     return false
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "cd", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "cd", 1, Dict{Int64, Node}())
   if node.value != "cd" || error != nothing || pos != 3
     return false
   end
 
   # TODO: should it be an error to not match the entire string? usually this is the difference
   # between parse and match (at least for pyparsing)
-  (value, pos, error) = parse(grammar, ReferencedRule(:rule), "ac", 1, Dict{Any, Node}())
+  (value, pos, error) = parse(grammar, ReferencedRule(:rule), "ac", 1, Dict{Int64, Node}())
 #   if value != nothing || !isa(error, ParseError) || pos != 1
 #     return false
 #   end
@@ -142,26 +142,26 @@ end
     rule = +('a' + 'b')
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "ababab", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "ababab", 1, Dict{Int64, Node}())
 
   if node.value != "ababab" || error != nothing || pos != 7
     return false
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "ab", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "ab", 1, Dict{Int64, Node}())
 
   if node.value != "ab" || error != nothing || pos != 3
     return false
   end
 
   # this is still okay, since we're allowed to not match the last 'a'
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "aba", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "aba", 1, Dict{Int64, Node}())
   if node.value != "ab" || error != nothing || pos != 3
     return false
   end
 
   # we have to match at least one "ab"
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "", 1, Dict{Int64, Node}())
   if node != nothing || !isa(error, ParseError) || pos != 1
     return false
   end
@@ -175,14 +175,14 @@ end
     rule = *('a' + 'b')
   end
 
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "ababab", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "ababab", 1, Dict{Int64, Node}())
 
   if node.value != "ababab" || error != nothing || pos != 7
     return false
   end
 
   # this is okay, we can match nothing as well
-  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "", 1, Dict{Any, Node}())
+  (node, pos, error) = parse(grammar, ReferencedRule(:rule), "", 1, Dict{Int64, Node}())
   if node !== nothing || error != nothing || pos != 1
     return false
   end
@@ -200,7 +200,7 @@ end
   end
 
   # generate parse tree
-  (ast, pos, error) = parse(grammar, ReferencedRule(:bold_text), "((foobar))", 1, Dict{Any, Node}())
+  (ast, pos, error) = parse(grammar, ReferencedRule(:bold_text), "((foobar))", 1, Dict{Int64, Node}())
 
   # transform tree into HTML
   tohtml(node, cvalues, ::MatchRule{:default}) = cvalues
