@@ -1,8 +1,7 @@
 # PEGParser
 
 
-PEGParser is a PEG Parser for Julia with Packrat capabilties. PEGParser was inspired by pyparsing, parsimonious, boost::spirit, as well as several others. I was originally writing the EBNF for an entirely different purpose, when it ocurred to me that it wouldn't be too difficult to write a parser. Thus, PEGParsing was born.
-
+PEGParser is a PEG Parser for Julia with Packrat capabilties. PEGParser was inspired by pyparsing, parsimonious, boost::spirit, as well as several others. 
 ## Defining a grammar
 
 To define a grammar you can write:
@@ -94,16 +93,19 @@ And to use the grammar:
 ```julia
 (node, pos, error) = parse(grammar, "5*(42+3+6+10+2)")
 
-evaluate(node, cvalues, ::MatchRule{::number}) = float(node.value)
-evaluate(node, cvalues, ::MatchRule{::expr}) = 
+# A ::MatchRule{:default} can be specified and will be used for anything that isn't
+# explicitely defined and is not on the ignore list
+evaluate(node, cvalues, ::MatchRule{:number}) = float(node.value)
+evaluate(node, cvalues, ::MatchRule{:expr}) = 
   length(children) == 1 ? children : eval(Expr(:call, cvalues[2], cvalues[1], cvalues[3]))
-evaluate(node, cvalues, ::MatchRule{::factor}) = cvalues
-evaluate(node, cvalues, ::MatchRule{::pfactor}) = cvalues
-evaluate(node, cvalues, ::MatchRule{::term}) = 
+evaluate(node, cvalues, ::MatchRule{:factor}) = cvalues
+evaluate(node, cvalues, ::MatchRule{:pfactor}) = cvalues
+evaluate(node, cvalues, ::MatchRule{:term}) = 
   length(children) == 1 ? children : eval(Expr(:call, cvalues[2], cvalues[1], cvalues[3]))
-evaluate(node, cvalues, ::MatchRule{::op1}) = symbol(node.value)
-evaluate(node, cvalues, ::MatchRule{::op2}) = symbol(node.value)
+evaluate(node, cvalues, ::MatchRule{:op1}) = symbol(node.value)
+evaluate(node, cvalues, ::MatchRule{:op2}) = symbol(node.value)
 
+# Note: the ignore list -- these will produce no output when encountered.
 result = transform(math, node, ignore=[:lparen, :rparen])
 
 println(result) # 315.0
