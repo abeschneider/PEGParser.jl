@@ -1,8 +1,7 @@
 # PEGParser
 
 
-PEGParser is a PEG Parser for Julia with Packrat capabilties. PEGParser was inspired by pyparsing, parsimonious, boost::spirit, as well as several others. I was originally writing the EBNF for an entirely different purpose, when it ocurred to me that it wouldn't be too difficult to write a parser. Thus, PEGParsing was born.
-
+PEGParser is a PEG Parser for Julia with Packrat capabilties. PEGParser was inspired by pyparsing, parsimonious, boost::spirit, as well as several others. 
 ## Defining a grammar
 
 To define a grammar you can write:
@@ -52,22 +51,22 @@ end
 The first step in using the grammar is to create an AST from a given input:
 
 ```julia
-(node, pos, error) = parse(markup, "[test]")
+(ast, pos, error) = parse(markup, "[test]")
 ```
 
 The variable `node` contains the AST which can be transformed to the desired result. To do so, first a mapping of the node names to transform has to established:
 
 ```julia
-html = Dict()
-html["bold_open"] = (node, children) -> "<b>"
-html["bold_close"] = (node, children) -> "</b>"
-html["text"] = (node, children) -> node.value
-html["bold_text"] = (node, children) -> join(children)
+tohtml(node, cvalues, ::MatchRule{:bold_open}) = "<b>"
+tohtml(node, cvalues, ::MatchRule{:bold_close}) = "</b>"
+tohtml(node, cvalues, ::MatchRule{:text}) = node.value
+tohtml(node, cvalues, ::MatchRule{:bold_text}) = join(children)
+
 ```
 
 And finally:
 ```julia
-result = transform(html, node)
+result = transform(tohtml, ast)
 println(result) # "<b>test</b>"
 ```
 
@@ -81,9 +80,11 @@ Transforms can also be used to calculate a value from the tree. Consider the sta
   expr = (term + op1 + expr) | term
   term = (factor + op2 + term) | factor
   factor = number | pfactor
-  pfactor = ('(' + expr + ')')
+  pfactor = lparen + expr + rparen
   op1 = '+' | '-'
   op2 = '*' | '/'
+  lparen = "("
+  rparen = ")"
 end
 ```
 
@@ -92,18 +93,20 @@ And to use the grammar:
 ```julia
 (node, pos, error) = parse(grammar, "5*(42+3+6+10+2)")
 
-math = Dict()
-math["number"] = (node, children) -> float(node.value)
-math["expr"] = (node, children) ->
-  length(children) == 1 ? children : eval(Expr(:call, children[2], children[1], children[3]))
-math["factor"] = (node, children) -> children
-math["pfactor"] = (node, children) -> children[2]
-math["term"] = (node, children) ->
-  length(children) == 1 ? children : eval(Expr(:call, children[2], children[1], children[3]))
-math["op1"] = (node, children) -> symbol(node.value)
-math["op2"] = (node, children) -> symbol(node.value)
+# A ::MatchRule{:default} can be specified and will be used for anything that isn't
+# explicitely defined and is not on the ignore list
+evaluate(node, cvalues, ::MatchRule{:number}) = float(node.value)
+evaluate(node, cvalues, ::MatchRule{:expr}) = 
+  length(children) == 1 ? children : eval(Expr(:call, cvalues[2], cvalues[1], cvalues[3]))
+evaluate(node, cvalues, ::MatchRule{:factor}) = cvalues
+evaluate(node, cvalues, ::MatchRule{:pfactor}) = cvalues
+evaluate(node, cvalues, ::MatchRule{:term}) = 
+  length(children) == 1 ? children : eval(Expr(:call, cvalues[2], cvalues[1], cvalues[3]))
+evaluate(node, cvalues, ::MatchRule{:op1}) = symbol(node.value)
+evaluate(node, cvalues, ::MatchRule{:op2}) = symbol(node.value)
 
-result = transform(math, node)
+# Note: the ignore list -- these will produce no output when encountered.
+result = transform(math, node, ignore=[:lparen, :rparen])
 
 println(result) # 315.0
 ```
@@ -115,17 +118,3 @@ This code is not very well tested yet and isn't yet finished, so use at your own
 While I have not benchmarked any of this, the hope is that it should be relatively fast. The grammar itself is created using macros. The parsing has very little overhead and additionally has caching. That said, without any benchmarking, this is just conjecture.
 
 Additionally, little to now error checking is performed. The macros probably need some serious review. And while there are a bunch of unit tests, they fall very short from full coverage.
-
-Finally, one thing that I would like to change in the near future is to have transforms look something like:
-
-```julia
-html(node, children, :bold_open) = "<b>"
-html(node, children, :bold_close) = "</b>"
-html(node, children, :text) = node.value
-html(node, children, :bold_text) = join(children)
-
-result = transform(html, node)
-```
-
-If Julia gets dispatch on value, then this would be trivial to write. One possible workaround is to create a type per rule in the grammar. Then the functions can be written to dispatch on the type associated with the given rule.
-
