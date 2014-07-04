@@ -4,8 +4,8 @@ import Base.show
 import Base.convert
 import Base.getindex
 
-export Grammar, @grammar, @rule, Rule, Terminal, OrRule, AndRule, ReferencedRule
-export OneOrMoreRule, ZeroOrMoreRule, MultipleRule, RegexRule, OptionalRule, show, convert, *, ?
+export Grammar, @grammar, @rule, Rule, Terminal, OrRule, AndRule, ReferencedRule, ListRule
+export OneOrMoreRule, ZeroOrMoreRule, MultipleRule, RegexRule, OptionalRule, show, convert, *, ?, list
 export addRuleType, displayRuleTypes
 
 abstract Rule
@@ -13,8 +13,6 @@ abstract Rule
 type Grammar
   rules::Dict{Symbol, Rule}
 end
-
-generateRuleName() = randstring(10)
 
 immutable Terminal <: Rule
   name::String
@@ -139,6 +137,16 @@ immutable OptionalRule <: Rule
   end
 end
 
+immutable ListRule <: Rule
+  name::String
+  entry::Rule
+  delim::Rule
+
+  function ListRule(name::String, entry::Rule, delim::Rule)
+    return new(name, entry, delim)
+  end
+end
+
 +(a::Rule, b::Rule) = AndRule([a, b]);
 +(a::AndRule, b::AndRule) = AndRule(append!(a.values, b.values));
 +(a::AndRule, b::Rule) = AndRule(push!(a.values, b));
@@ -178,7 +186,7 @@ function show(io::IO, rule::MultipleRule)
 end
 
 function show(io::IO, rule::RegexRule)
-  print(io, "r(rule.value.pattern)")
+  print(io, "r($(rule.value.pattern))")
 end
 
 function convert{T}(::Type{Rule}, n::T)
@@ -228,20 +236,15 @@ function parseDefinition(name::String, expr::Expr)
   end
 
   if expr.args[1] === :|
-    #left = parseDefinition("$name.left", expr.args[2]);
-    left = parseDefinition("", expr.args[2]);
-    #right = parseDefinition("$name.right", expr.args[3]);
-    right = parseDefinition("", expr.args[3]);
-
-    # Or is always handled in a binary manner
+    left = parseDefinition("$name.1", expr.args[2])
+    right = parseDefinition("$name.2", expr.args[3])
     rules::Array{Rule} = [left, right]
     return OrRule(name, rules)
   elseif expr.args[1] === :+
     # check if this is infix or prefix
     if length(expr.args) > 2
       # Addition can contain multiple entries
-      #values::Array{Rule} = [parseDefinition("$name.$i", arg) for (i, arg) in enumerate(expr.args[2:end])]
-      values::Array{Rule} = [parseDefinition("", arg) for (i, arg) in enumerate(expr.args[2:end])]
+      values::Array{Rule} = [parseDefinition("$name.$i", arg) for (i, arg) in enumerate(expr.args[2:end])]
       return AndRule(name, values)
     else
       # it's prefix, so it maps to one or more rule
@@ -256,6 +259,10 @@ function parseDefinition(name::String, expr::Expr)
     return ZeroOrMoreRule(parseDefinition(name, expr.args[2]))
   elseif expr.args[1] == :?
     return OptionalRule(parseDefinition(name, expr.args[2]))
+  elseif expr.args[1] == :list
+    entry = parseDefinition("$name.entry", expr.args[2])
+    delim = parseDefinition("$name.delim", expr.args[3])
+    return ListRule(name, entry, delim)
   end
 
   return EmptyRule()
@@ -280,31 +287,14 @@ function parseTransform(expr::Expr)
   end
 end
 
-ruletosymbol = Dict{String, Type}()
-
-function addRuleType(name::String, typ::Type)
-  ruletosymbol["$name.$rulename"] = typ
-end
-
-function displayRuleTypes()
-  println(ruletosymbol)
-end
-
 macro grammar(name::Symbol, expr)
   quote
     $(esc(name)) = $(parseGrammar(expr))
   end
 end
 
-type Transform
-  actions::Dict{String, Function}
-end
-
-macro transform(name, expr)
-  parseTransform()
-end
-
 function *(rule::Rule) end
 function ?(rule::Rule) end
+function list(entry::Rule, delim::Rule) end
 
 end
