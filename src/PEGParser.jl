@@ -19,7 +19,6 @@ function parse(grammar::Grammar, text::String)
   (value, pos, error) = parse(grammar, rule, text, 1, Dict{Int64, Node}());
 
   # TODO: check that the entire string was matched
-
   return (value, pos, error);
 end
 
@@ -27,92 +26,29 @@ function transform(fn::Function, node::Node; ignore=[])
   return transform(fn, node, Set{Symbol}(ignore))
 end
 
-# TODO: This code looks ugly. Can it be cleaned up a little?
+isleaf(node::Node) = isempty(node.children)
+
 function transform(fn::Function, node::Node, ignore::Set{Symbol})
   if node.sym !== nothing && node.sym in ignore
-    println("ignoring: $(node.name)")
     return nothing
+  end
+
+  if isleaf(node)
+    return node.value
   end
 
   cvalues = filter(el -> el !== nothing,
     [transform(fn, child, ignore) for child in node.children])
 
-  println("transforming: $(node.name)")
-  println("\tcvalues = $cvalues")
-
-  if isempty(cvalues)
-    cvalues = nothing
-  elseif length(cvalues) == 1
-    cvalues = cvalues[1]
-  end
-
-
-  if node.sym !== nothing
-    println("\tnode.sym = $(node.sym), fn=$fn, $(method_exists(fn, (Node, Any, MatchRule{node.sym})))")
-  end
-
   if node.sym !== nothing && method_exists(fn, (Node, Any, MatchRule{node.sym}))
     label = MatchRule{node.sym}()
-    rvalue = fn(node, cvalues, label)
-    println("\treturning(1): $rvalue")
-    return rvalue
   else
-    #label = MatchRule{:default}()
-    println("\treturning(2): $(node.value)")
-    return node.value
+    label = MatchRule{:default}()
   end
 
-
-#   else
-#     return cvalues
-#   end
+    rvalue = fn(node, cvalues, label)
+    return rvalue
 end
-
-
-# function transform(fn::Function, node::Node; ignore=[])
-#   return transform(fn, node, Set{Symbol}(ignore))
-# end
-
-# # TODO: This code looks ugly. Can it be cleaned up a little?
-# function transform(fn::Function, node::Node, ignore::Set{Symbol})
-#   if node.sym !== nothing && node.sym in ignore
-#     println("ignoring: $node")
-#       return nothing
-#   end
-
-#   cvalues = filter(el -> el !== nothing,
-#     [transform(fn, child, ignore) for child in node.children])
-
-#   println("transforming: $node")
-#   println("cvalues = $cvalues")
-#   if length(cvalues) == 1
-#     cvalues = cvalues[1]
-#   end
-
-#   if isempty(cvalues)
-#     cvalues = nothing
-#   end
-
-#   if node.sym !== nothing
-#     println("node.sym = $(node.sym), fn=$fn, $(method_exists(fn, (Node, Any, MatchRule{node.sym})))")
-#   end
-
-#   if node.sym !== nothing && method_exists(fn, (Node, Any, MatchRule{node.sym}))
-#     label = MatchRule{node.sym}()
-#     rvalue = fn(node, cvalues, label)
-#     println("returning(1): $rvalue")
-#     return rvalue
-#   else
-#     #label = MatchRule{:default}()
-#     println("returning(2): $cvalues")
-#     return node.value
-#   end
-
-
-# #   else
-# #     return cvalues
-# #   end
-# end
 
 unref{T <: Rule}(node::Node, ::Type{T}) = node
 unref(node::Node, ::Type{ReferencedRule}) = node.children[1]
@@ -132,7 +68,7 @@ function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::Di
     (node, pos, error) = uncached_parse(grammar, rule, text, pos, cache)
 
     # store in cache if we got back a match
-    if error === nothing && node !== nothing
+    if error === nothing && node !== nothing && !haskey(cache, cacheKey)
       cache[cacheKey] = node
     end
 
@@ -165,12 +101,6 @@ function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos::Int64
       node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
       return (node, pos, error)
     end
-
-#     if error !== nothing
-#       return (nothing, pos, error)
-#     else
-#       println("branch did not match")
-#     end
   end
 
   # give error
@@ -225,7 +155,8 @@ function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos::Int
     return (unref(node), pos+size, nothing)
   end
 
-  return (nothing, pos, ParseError("'$(text[pos:(pos+length(rule.value)-1)])' does not match '$(rule.value)'.", pos))
+  len = min(pos+length(rule.value)-1, length(text))
+  return (nothing, pos, ParseError("'$(text[pos:len])' does not match '$(rule.value)'.", pos))
 end
 
 # TODO: look into making this more streamlined
@@ -292,8 +223,7 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::In
       return (node, pos, nothing)
     end
   else
-    error = ParseError("Could not match RegEx", pos)
-    return (nothing, firstPos, error)
+    return (nothing, firstPos, ParseError("Could not match RegEx", pos))
   end
 end
 
