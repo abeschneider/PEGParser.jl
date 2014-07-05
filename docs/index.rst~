@@ -115,13 +115,3 @@ Another example is a simple calculator::
         length(children) == 1 ? children : eval(Expr(:call, cvalues[2], cvalues[1], cvalues[3]))
     evaluate(node, cvalues, ::MatchRule{:op1}) = symbol(node.value)
     evaluate(node, cvalues, ::MatchRule{:op2}) = symbol(node.value)
-    
-    (node, pos, error) = parse(grammar, "5*(42+3+6+10+2)")
-    
-    # Note: the ignore list -- these will produce no output when encountered.
-    result = transform(math, node, ignore=[:lparen, :rparen])
-
-    println(result) # 315.0
-
-
-   
