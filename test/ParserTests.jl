@@ -371,10 +371,10 @@ end
 #   Y = "c" + "d"
 # end
 
-# cache = Dict{Int64, Node}()
+# cache = Dict{String, Node}()
 # rule = grammar.rules[:start]
 # (ast, pos, error) = parse(grammar, rule, "acdf", 1, true, cache)
-# println(cache)
+# # println(cache)
 
 
 # # @grammar grammar begin

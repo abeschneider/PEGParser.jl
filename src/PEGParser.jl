@@ -17,7 +17,7 @@ type MatchRule{T} end
 function parse(grammar::Grammar, text::String; cache=true, start=:start)
   rule = grammar.rules[start]
 
-  (ast, pos, error) = parse(grammar, rule, text, 1, cache, Dict{Int64, Node}())
+  (ast, pos, error) = parse(grammar, rule, text, 1, cache, Dict{String, Node}())
 
   if pos < length(text) + 1
     error = ParseError("Entire string did not match", pos)
@@ -58,32 +58,30 @@ unref{T <: Rule}(node::Node, ::Type{T}) = node
 unref(node::Node, ::Type{ReferencedRule}) = node.children[1]
 unref(node::Node) = unref(node, node.ruleType)
 
-function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
-  cachekey::Int64 = pos
+function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
+  if usecache
+    # check if there is a more efficient way to store this
+    cachekey::String = "$(object_id(rule))$pos"
+    if haskey(cache, cachekey)
+      cachedresult = cache[cachekey]
+#       println("using cached result: $cachedresult")
+      return (cachedresult, cachedresult.last, nothing)
+    else
+      (node, pos, error) = uncached_parse(grammar, rule, text, pos, usecache, cache)
 
-  if usecache && haskey(cache, cachekey)
-    # return the derivative rule
-    cachedresult = cache[cachekey]
-    return (cachedresult, cachedresult.last, nothing)
-  else
-    # it's not cached, so compute results
-    (node, pos, error) = uncached_parse(grammar, rule, text, pos, usecache, cache)
-
-    # TODO; This seems sub-optimal, look into a better method of doing this.
-    # store in cache if we got back a match
-    if usecache
+      # store in cache if we got back a match
       if node !== nothing
         cache[cachekey] = node
-      else
-        delete!(cache, cachekey)
       end
     end
-
-    return (node, pos, error)
+  else
+    (node, pos, error) = uncached_parse(grammar, rule, text, pos, usecache, cache)
   end
+
+  return (node, pos, error)
 end
 
-function uncached_parse(grammar::Grammar, ref::ReferencedRule, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
+function uncached_parse(grammar::Grammar, ref::ReferencedRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   rule = grammar.rules[ref.symbol]
 
   firstPos = pos
@@ -97,7 +95,7 @@ function uncached_parse(grammar::Grammar, ref::ReferencedRule, text::String, pos
   end
 end
 
-function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
+function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   # Try branches in order (left to right). The first branch to match will be marked
   # as a success. If no branches match, then return an error.
   firstPos = pos;
@@ -114,7 +112,7 @@ function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos::Int64
   return (nothing, pos, ParseError("No matching branches", pos))
 end
 
-function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
+function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   firstPos = pos;
 
   # All items in sequence must match, otherwise give an error
@@ -153,7 +151,7 @@ function string_matches(expected::String, actual::String, first::Int64, last::In
   return expected == actual[first:last-1];
 end
 
-function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
+function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   local size::Int64 = length(rule.value)
 
   if string_matches(rule.value, text, pos, pos+size)
@@ -167,7 +165,7 @@ function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos::Int
 end
 
 # TODO: look into making this more streamlined
-function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
+function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   firstPos = pos
   (child, pos, error) = parse(grammar, rule.value, text, pos, usecache, cache)
 
@@ -190,13 +188,13 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos
   return (node, pos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
+function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   firstPos::Int64 = pos
   children::Array{Node} = {}
 
   error = nothing
   while error == nothing
-    (child, pos, error) = parse(grammar, rule.value, text, pos::Int64, usecache, cache::Dict{Int64, Node})
+    (child, pos, error) = parse(grammar, rule.value, text, pos::Int64, usecache, cache::Dict{String, Node})
 
     if error === nothing && child !== nothing
       push!(children, unref(child))
@@ -212,7 +210,7 @@ function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, po
   return (node, pos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
+function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   firstPos = pos;
 
   # use regex match
@@ -234,7 +232,7 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::In
   end
 end
 
-function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
+function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   firstPos = pos
   (child, pos, error) = parse(grammar, rule.value, text, pos, usecache, cache)
 
@@ -247,7 +245,7 @@ function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos:
   return (nothing, firstPos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int64, usecache::Bool, cache::Dict{Int64, Node})
+function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   firstPos = pos
   (child, pos, error) = parse(grammar, rule.entry, text, pos, usecache, cache)
 
