@@ -32,7 +32,6 @@ import PEGParser: Node
     @test ast.value == "a"
     @test ast.sym === :start
     @test pos == 2
-    #@test ast.ruleType ===
   end
 
   function test_or1_ncache()
@@ -348,12 +347,8 @@ import PEGParser: Node
     end
 
     # first branch
-#     (ast, pos, error) = parse(grammar, "acde")
-#     cache = Dict{Int64, Node}()
-#     rule = grammar.rules[:start]
-#     (ast, pos, error) = parse_withpackrat(grammar, rule, "acde", 1, cache)
-#     @test ast.value == "acde"
-
+    (ast, pos, error) = parse(grammar, "acde")
+    @test ast.value == "acde"
 
     # second branch; skip optional "b"
     (ast, pos, error) = parse(grammar, "acdf")
@@ -362,23 +357,7 @@ import PEGParser: Node
     # second branch, use optional "b"
     (ast, pos, error) = parse(grammar, "abcdf")
     @test ast.value == "abcdf"
+
+    # TODO: need method to test cache was accessed
   end
 end
-
-# @grammar grammar begin
-#   # ambigious on "c"
-#   start = "a" + ((Y + "e") | (?("b") + Y + "f"))
-#   Y = "c" + "d"
-# end
-
-# cache = Dict{String, Node}()
-# rule = grammar.rules[:start]
-# (ast, pos, error) = parse(grammar, rule, "acdf", 1, true, cache)
-# # println(cache)
-
-
-# # @grammar grammar begin
-# #   start = a | b
-# #   a = "a" + "b"
-# #   b = "a" + "c"
-# # end

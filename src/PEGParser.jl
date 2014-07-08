@@ -64,8 +64,7 @@ function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, usecache:
     cachekey::String = "$(object_id(rule))$pos"
     if haskey(cache, cachekey)
       cachedresult = cache[cachekey]
-#       println("using cached result: $cachedresult")
-      return (cachedresult, cachedresult.last, nothing)
+      (node, pos, error) = (cachedresult, cachedresult.last, nothing)
     else
       (node, pos, error) = uncached_parse(grammar, rule, text, pos, usecache, cache)
 
