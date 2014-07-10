@@ -25,6 +25,7 @@ The following rules can be used:
 * One or more: `+((a + b) | (c + d))`
 * Zero or more: `*((a + b) | (c + d))`
 * Regular expressions: `r"[a-zA-Z]+"`
+* Lists: `list(a+b, c)`
 
 #### TODO
 Multiple: `(a+b)^(3, 5)`
@@ -54,13 +55,13 @@ The first step in using the grammar is to create an AST from a given input:
 (ast, pos, error) = parse(markup, "[test]")
 ```
 
-The variable `node` contains the AST which can be transformed to the desired result. To do so, first a mapping of the node names to transform has to established:
+The variable `ast` contains the AST which can be transformed to the desired result. To do so, first a mapping of the node names to transform has to established:
 
 ```julia
 tohtml(node, cvalues, ::MatchRule{:bold_open}) = "<b>"
 tohtml(node, cvalues, ::MatchRule{:bold_close}) = "</b>"
 tohtml(node, cvalues, ::MatchRule{:text}) = node.value
-tohtml(node, cvalues, ::MatchRule{:bold_text}) = join(children)
+tohtml(node, cvalues, ::MatchRule{:bold_text}) = join(cvalues)
 
 ```
 
@@ -99,7 +100,7 @@ evaluate(node, cvalues, ::MatchRule{:number}) = float(node.value)
 evaluate(node, cvalues, ::MatchRule{:expr}) = 
   length(children) == 1 ? children : eval(Expr(:call, cvalues[2], cvalues[1], cvalues[3]))
 evaluate(node, cvalues, ::MatchRule{:factor}) = cvalues
-evaluate(node, cvalues, ::MatchRule{:pfactor}) = cvalues
+evaluate(node, cvalues, ::MatchRule{:pfactor}) = cvalue 
 evaluate(node, cvalues, ::MatchRule{:term}) = 
   length(children) == 1 ? children : eval(Expr(:call, cvalues[2], cvalues[1], cvalues[3]))
 evaluate(node, cvalues, ::MatchRule{:op1}) = symbol(node.value)
@@ -113,8 +114,6 @@ println(result) # 315.0
 
 ## Caveats
 
-This code is not very well tested yet and isn't yet finished, so use at your own risk (I wrote this while on vacation). It is, without any question, a work in progress.
+This is still very much a work in progress and doesn't yet have as much test coverage as I would like.
 
-While I have not benchmarked any of this, the hope is that it should be relatively fast. The grammar itself is created using macros. The parsing has very little overhead and additionally has caching. That said, without any benchmarking, this is just conjecture.
-
-Additionally, little to now error checking is performed. The macros probably need some serious review. And while there are a bunch of unit tests, they fall very short from full coverage.
+The error handling still needs a lot of work. Currently only a single error will be emitted, but the hope is to allow multiple errors to be returned.
