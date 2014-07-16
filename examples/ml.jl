@@ -24,11 +24,7 @@ toexpr(node, cvalues, ::MatchRule{:boolean}) = node.value == "#t" ? true : false
 toexpr(node, cvalues, ::MatchRule{:integer}) = parseint(node.value)
 toexpr(node, cvalues, ::MatchRule{:string}) = node.value[2:end-1]
 toexpr(node, cvalues, ::MatchRule{:symbol}) = symbol(node.value)
-
-toexpr(node, cvalues, ::MatchRule{:atom}) = cvalues
 toexpr(node, cvalues, ::MatchRule{:lst}) = Expr(:call, cvalues[1], cvalues[2], cvalues[3])
-toexpr(node, cvalues, ::MatchRule{:cell}) = cvalues
-
 
 data = "(+ 1 (- 5 6)) (* 3 4)"
 (ast, pos, error) = parse(mlgrammar, data)

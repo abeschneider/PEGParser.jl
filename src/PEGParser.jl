@@ -37,12 +37,13 @@ function transform(fn::Function, node::Node, ignore::Set{Symbol})
     return nothing
   end
 
-  if isleaf(node)
-    return node.value
-  end
+  # TODO: This is ugly .. is there a better solution?
+    cvalues = filter(el -> el !== nothing,
+      [transform(fn, child, ignore) for child in node.children])
 
-  cvalues = filter(el -> el !== nothing,
-    [transform(fn, child, ignore) for child in node.children])
+  if (length(cvalues) == 1)
+    cvalues = cvalues[1]
+  end
 
   if node.sym !== nothing && method_exists(fn, (Node, Any, MatchRule{node.sym}))
     label = MatchRule{node.sym}()

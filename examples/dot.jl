@@ -17,7 +17,8 @@ end
   node_stmt = node_id
   edge_stmt = node_id + edgeop + node_id
 
-  node_id = r"[a-zA-Z][a-zA-Z0-9]*" + space
+  node_id = node_id_value + space
+  node_id_value = r"[a-zA-Z][a-zA-Z0-9]*"
   graph_label = "graph" + space
   semicolon = ";" + space
   lbrace = "{" + space
@@ -27,17 +28,18 @@ end
 end
 
 tograph(node::Node, cvalues, ::MatchRule{:default}) = cvalues
-tograph(node::Node, cvalues, ::MatchRule{:start}) = cvalues[1]
-tograph(node::Node, cvalues, ::MatchRule{:stmt_lst}) = cvalues[1]
-tograph(node::Node, cvalues, ::MatchRule{:stmt}) = cvalues[1]
-tograph(node::Node, cvalues, ::MatchRule{:node_stmt}) = GraphNode(cvalues[1])
+tograph(node::Node, cvalues, ::MatchRule{:start}) = cvalues
+tograph(node::Node, cvalues, ::MatchRule{:stmt_lst}) = cvalues
+tograph(node::Node, cvalues, ::MatchRule{:stmt}) = cvalues
+tograph(node::Node, cvalues, ::MatchRule{:node_stmt}) = GraphNode(cvalues)
 tograph(node::Node, cvalues, ::MatchRule{:edge_stmt}) = GraphEdge(cvalues[1], cvalues[2])
-tograph(node::Node, cvalues, ::MatchRule{:node_id}) = cvalues[1]
+tograph(node::Node, cvalues, ::MatchRule{:node_id_value}) = node.value
 
 parse_data = """
 graph {
-    nodeA -> nodeC
-    nodeB -> nodeC
+  nodeA
+  nodeA -> nodeC
+  nodeB -> nodeC
 }
 """
 
