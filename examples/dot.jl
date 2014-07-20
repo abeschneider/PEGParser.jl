@@ -28,9 +28,6 @@ end
 end
 
 tograph(node::Node, cvalues, ::MatchRule{:default}) = cvalues
-tograph(node::Node, cvalues, ::MatchRule{:start}) = cvalues
-tograph(node::Node, cvalues, ::MatchRule{:stmt_lst}) = cvalues
-tograph(node::Node, cvalues, ::MatchRule{:stmt}) = cvalues
 tograph(node::Node, cvalues, ::MatchRule{:node_stmt}) = GraphNode(cvalues)
 tograph(node::Node, cvalues, ::MatchRule{:edge_stmt}) = GraphEdge(cvalues[1], cvalues[2])
 tograph(node::Node, cvalues, ::MatchRule{:node_id_value}) = node.value
