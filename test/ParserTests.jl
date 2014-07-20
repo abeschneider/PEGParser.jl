@@ -1,7 +1,6 @@
 using RunTests
 using Base.Test
 
-push!(LOAD_PATH, "../src")
 using EBNF
 using PEGParser
 import PEGParser: Node
