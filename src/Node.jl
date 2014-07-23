@@ -1,3 +1,5 @@
+include("EBNF.jl")
+
 immutable Node
   name::String
   value::String

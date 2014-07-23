@@ -1,2 +1,2 @@
-require("ParserTests.jl")
-require("TransformTEsts.jl")
+include("ParserTests.jl")
+include("TransformTests.jl")

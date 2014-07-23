@@ -1,12 +1,6 @@
-module EBNF
-
 import Base.show
 import Base.convert
 import Base.getindex
-
-export Grammar, @grammar, @rule, Rule, Terminal, OrRule, AndRule, ReferencedRule, ListRule
-export OneOrMoreRule, ZeroOrMoreRule, MultipleRule, RegexRule, OptionalRule, show, convert, *, ?, list
-export addRuleType, displayRuleTypes
 
 abstract Rule
 
@@ -296,5 +290,3 @@ end
 function *(rule::Rule) end
 function ?(rule::Rule) end
 function list(entry::Rule, delim::Rule) end
-
-end

@@ -1,7 +1,6 @@
 using RunTests
 using Base.Test
 
-using EBNF
 using PEGParser
 
 # FIXME: Error "MatchRule not defined" occurs when @testmodule is used

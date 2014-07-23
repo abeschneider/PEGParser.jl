@@ -1,7 +1,6 @@
 using RunTests
 using Base.Test
 
-using EBNF
 using PEGParser
 import PEGParser: Node
 

@@ -1,11 +1,12 @@
 module PEGParser
 
 import Base: show, parse
-using EBNF
 
 include("Node.jl")
+include("EBNF.jl")
 
 export parse, ParseError, MatchRule, Node, transform
+export @grammar
 
 immutable ParseError
   msg::String
