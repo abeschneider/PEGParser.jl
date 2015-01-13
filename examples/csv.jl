@@ -1,4 +1,3 @@
-using EBNF
 using PEGParser
 
 # for testing purposes
@@ -18,7 +17,14 @@ using PEGParser
 end
 
 
-toarrays(node::Node, cvalues, ::MatchRule{:default}) = cvalues
+function toarrays(node::Node, cvalues, ::MatchRule{:default})
+  if length(cvalues) == 1
+    return cvalues[1]
+  end
+
+  return cvalues
+end
+
 toarrays(node::Node, cvalues, ::MatchRule{:escaped_field_value}) = node.value
 toarrays(node::Node, cvalues, ::MatchRule{:unescaped_field}) = node.value
 
@@ -30,7 +36,7 @@ this,is,a,"test"
 """
 
 (ast, pos, error) = parse(csv, data)
-println(ast)
+# println(ast)
 result = transform(toarrays, ast, ignore=[:dquote, :dquote2, :comma, :crlf])
 println("---------------")
 println(result)

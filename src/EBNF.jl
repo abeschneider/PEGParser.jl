@@ -55,13 +55,47 @@ immutable OrRule <: Rule
   name::String
   values::Array{Rule}
 
-  function OrRule(name::String, values::Array{Rule})
-    return new(name, values)
+  function OrRule{T <: Rule}(name::String, rules::Array{T})
+    return new(name, rules)
   end
 
-  function OrRule(values::Array{Rule})
-    return new("", values);
+  function OrRule(name::String, left::OrRule, right::OrRule)
+    return new(name, vcat(left.values, right.values))
   end
+
+  function OrRule(name::String, left::Rule, right::Rule)
+    return new(name, [left, right])
+  end
+
+  function OrRule(name::String, left::OrRule, right::Rule)
+    return new(name, vcat(left.values, right))
+  end
+
+  function OrRule(name::String, left::Rule, right::OrRule)
+    return new(name, vcat(right.values, left))
+  end
+
+  function OrRule(name::String, left::OrRule, right::Terminal)
+    return new(name, vcat(left.values, right.value))
+  end
+
+  function OrRule(name::String, left::Terminal, right::OrRule)
+    return new(name, vcat(right.values, left.value))
+  end
+
+  function OrRule{T1, T2}(name::String, left::T1, right::T2)
+    return new(name, [left, right])
+  end
+  # function OrRule(name::String, values::Array{Rule})
+  #   return new(name, values)
+  # end
+  #
+  # function OrRule(name::String, left, right)
+  #   return new(name, vcat())
+  #
+  # function OrRule(values::Array{Rule})
+  #   return new("", values);
+  # end
 end
 
 immutable OneOrMoreRule <: Rule
@@ -128,6 +162,25 @@ immutable OptionalRule <: Rule
 
   function OptionalRule(value::Rule)
     return new("", value)
+  end
+end
+
+immutable SuppressRule <: Rule
+  name::String
+  value::Rule
+
+  function SuppressRule(name::String, value::Rule)
+    return new(name, value)
+  end
+end
+
+immutable SelectionRule <: Rule
+  name::String
+  rule::Rule
+  selection
+
+  function SelectionRule(name::String, rule::Rule, selection)
+    return new(name, rule, selection)
   end
 end
 
@@ -224,16 +277,26 @@ type EmptyRule <: Rule
 end
 
 function parseDefinition(name::String, expr::Expr)
+  # println("expr = $expr")
+  # dump(expr)
+
   # if it's a macro (e.g. r"regex", then we want to expand it first)
   if expr.head === :macrocall
     return parseDefinition(name, eval(expr))
   end
 
+  # using indexing operation to select result of rule
+  if expr.head === :ref
+    rule = parseDefinition(name, expr.args[1])
+    select = expr.args[2]
+    return SelectionRule("$name.sel", rule, select)
+  end
+
   if expr.args[1] === :|
     left = parseDefinition("$name.1", expr.args[2])
     right = parseDefinition("$name.2", expr.args[3])
-    rules::Array{Rule} = [left, right]
-    return OrRule(name, rules)
+    # rules::Array{Rule} = [left, right]
+    return OrRule(name, left, right)
   elseif expr.args[1] === :+
     # check if this is infix or prefix
     if length(expr.args) > 2
@@ -242,7 +305,12 @@ function parseDefinition(name::String, expr::Expr)
       return AndRule(name, values)
     else
       # it's prefix, so it maps to one or more rule
-      return OneOrMoreRule(parseDefinition(name, expr.args[2]))
+      return OneOrMoreRule(name, parseDefinition("$name.values", expr.args[2]))
+    end
+  elseif expr.args[1] === :-
+    # it's the prefix form
+    if length(expr.args) == 2
+      return SuppressRule(name, parseDefinition("$name.value", expr.args[2]))
     end
   elseif expr.args[1] === :^
     # an entry can appear N:M times

@@ -39,12 +39,12 @@ function transform(fn::Function, node::Node, ignore::Set{Symbol})
   end
 
   # TODO: This is ugly .. is there a better solution?
-    cvalues = filter(el -> el !== nothing,
-      [transform(fn, child, ignore) for child in node.children])
+  cvalues = filter(el -> el !== nothing,
+    [transform(fn, child, ignore) for child in node.children])
 
-  if (length(cvalues) == 1)
-    cvalues = cvalues[1]
-  end
+  # if (length(cvalues) == 1)
+  #   cvalues = cvalues[1]
+  # end
 
   if node.sym !== nothing && method_exists(fn, (Node, Any, MatchRule{node.sym}))
     label = MatchRule{node.sym}()
@@ -52,8 +52,7 @@ function transform(fn::Function, node::Node, ignore::Set{Symbol})
     label = MatchRule{:default}()
   end
 
-    rvalue = fn(node, cvalues, label)
-    return rvalue
+  return fn(node, cvalues, label)
 end
 
 unref{T <: Rule}(node::Node, ::Type{T}) = node
@@ -271,6 +270,27 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int
 
   node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
   return (node, pos, nothing)
+end
+
+function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
+  # use rule contained in the SuppressRule to parse, but don't return anything
+  (_, pos, error) = uncached_parse(grammar, rule.value, text, pos, usecache, cache)
+  # println("?? $ast, $pos, $error")
+  return (nothing, pos, error)
+end
+
+function uncached_parse(grammar::Grammar, rule::SelectionRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
+  firstPos = pos
+  (ast, pos, error) = uncached_parse(grammar, rule.rule, text, pos, usecache, cache)
+
+  if ast !== nothing
+    # if it's an number, transform
+    child = ast.children[rule.selection]
+    node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
+    return (node, pos, error)
+  end
+
+  return (nothing, pos, error)
 end
 
 end
