@@ -288,7 +288,7 @@ function parseDefinition(name::String, expr::Expr)
   # using indexing operation to select result of rule
   if expr.head === :ref
     rule = parseDefinition(name, expr.args[1])
-    select = expr.args[2]
+    select = eval(expr.args[2])
     return SelectionRule("$name.sel", rule, select)
   end
 

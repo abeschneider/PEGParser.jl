@@ -275,7 +275,6 @@ end
 function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   # use rule contained in the SuppressRule to parse, but don't return anything
   (_, pos, error) = uncached_parse(grammar, rule.value, text, pos, usecache, cache)
-  # println("?? $ast, $pos, $error")
   return (nothing, pos, error)
 end
 
@@ -284,10 +283,14 @@ function uncached_parse(grammar::Grammar, rule::SelectionRule, text::String, pos
   (ast, pos, error) = uncached_parse(grammar, rule.rule, text, pos, usecache, cache)
 
   if ast !== nothing
-    # if it's an number, transform
-    child = ast.children[rule.selection]
-    node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
-    return (node, pos, error)
+    if typeof(rule.selection) === Int64
+      child = ast.children[rule.selection]
+      node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
+      return (node, pos, error)
+    elseif typeof(rule.selection) === Function
+      node = rule.selection(ast)
+      return (node, pos, error)
+    end
   end
 
   return (nothing, pos, error)

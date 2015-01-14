@@ -6,9 +6,9 @@ using PEGParser
 @grammar csv begin
   start = list(record, crlf)
   record = list(field, comma)
-  field = escaped_field | unescaped_field
-  escaped_field = dquote + escaped_field_value + dquote
-  escaped_field_value = (r"[ ,\n\r!#$%&'()*+\-./0-~]+" | dquote2)
+  field = (escaped_field | unescaped_field)[(ast) -> ast.children]
+  escaped_field = (-dquote + escaped_field_value + -dquote)[1]
+  escaped_field_value = (r"[ ,\n\r!#$%&'()*+\-./0-~]+" | -dquote2)[1]
   unescaped_field = r"[ !#$%&'()*+\-./0-~]+"
   crlf = r"[\n\r]+"
   dquote = '"'
@@ -17,26 +17,18 @@ using PEGParser
 end
 
 
-function toarrays(node::Node, cvalues, ::MatchRule{:default})
-  if length(cvalues) == 1
-    return cvalues[1]
-  end
-
-  return cvalues
-end
-
-toarrays(node::Node, cvalues, ::MatchRule{:escaped_field_value}) = node.value
+toarrays(node::Node, cvalues, ::MatchRule{:default}) = cvalues
 toarrays(node::Node, cvalues, ::MatchRule{:unescaped_field}) = node.value
-
+toarrays(node::Node, cvalues, ::MatchRule{:escaped_field}) = node.value
 
 data = """
 1,2,3
 4,5,6
-this,is,a,"test"
+this,is,a,"test and only a test"
 """
 
-(ast, pos, error) = parse(csv, data)
-# println(ast)
-result = transform(toarrays, ast, ignore=[:dquote, :dquote2, :comma, :crlf])
+(ast, pos, error) = parse(csv, data, cache=false)
+println(ast)
+result = transform(toarrays, ast)
 println("---------------")
 println(result)
