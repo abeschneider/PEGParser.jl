@@ -358,4 +358,34 @@ import PEGParser: Node
 
     # TODO: need method to test cache was accessed
   end
+
+  function test_list_uncached()
+    @grammar grammar begin
+      start = list(number, ",")
+      number = r"[0-9]"
+    end
+
+    (ast, pos, error) = parse(grammar, "1,2,3", cache=false)
+    @test error === nothing
+    @test ast.value == "1,2,3"
+
+    (ast, pos, error) = parse(grammar, "", cache=false)
+    @test error !== nothing
+    # @test ast.value == "1,2,3"
+  end
+
+  function test_list0_uncached()
+    @grammar grammar begin
+      start = list(number, ",", 0)
+      number = r"[0-9]"
+    end
+
+    (ast, pos, error) = parse(grammar, "1,2,3", cache=false)
+    @test error === nothing
+    @test ast.value == "1,2,3"
+
+    (ast, pos, error) = parse(grammar, "", cache=false)
+    @test error === nothing
+    @test ast === nothing
+  end
 end

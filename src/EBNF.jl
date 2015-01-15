@@ -188,9 +188,14 @@ immutable ListRule <: Rule
   name::String
   entry::Rule
   delim::Rule
+  min::Int64
 
   function ListRule(name::String, entry::Rule, delim::Rule)
-    return new(name, entry, delim)
+    return new(name, entry, delim, 1)
+  end
+
+  function ListRule(name::String, entry::Rule, delim::Rule, min::Int64)
+    return new(name, entry, delim, min)
   end
 end
 
@@ -324,6 +329,10 @@ function parseDefinition(name::String, expr::Expr)
   elseif expr.args[1] == :list
     entry = parseDefinition("$name.entry", expr.args[2])
     delim = parseDefinition("$name.delim", expr.args[3])
+    if length(expr.args) > 3
+        return ListRule(name, entry, delim, expr.args[4])
+    end
+
     return ListRule(name, entry, delim)
   end
 

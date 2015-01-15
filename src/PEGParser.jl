@@ -251,8 +251,15 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int
 
   # make sure there is at least one
   if error !== nothing || child === nothing
-    return (nothing, pos, ParseError("No match (ListRule)", pos))
+    if rule.min > 0
+      return (nothing, pos, ParseError("No match (ListRule)", pos))
+    else
+      return (nothing, pos, nothing)
+    end
   end
+
+  # number of occurances
+  count = 1
 
   # check if there is a delim
   (dchild, pos, error) = parse(grammar, rule.delim, text, pos, usecache, cache)
@@ -266,6 +273,12 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int
       push!(children, unref(child))
       (dchild, pos, error) = parse(grammar, rule.delim, text, pos, usecache, cache)
     end
+
+    count += 1
+  end
+
+  if count < rule.min
+    return (nothing, pos, ParseError("No match (ListRule)", pos))
   end
 
   node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
