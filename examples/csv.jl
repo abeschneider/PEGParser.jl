@@ -24,7 +24,9 @@ toarrays(node::Node, cvalues, ::MatchRule{:escaped_field}) = node.value
 data = """
 1,2,3
 4,5,6
-this,is,a,"test and only a test"
+this,is,a,"test and
+
+only a test"
 """
 
 (ast, pos, error) = parse(csv, data)
