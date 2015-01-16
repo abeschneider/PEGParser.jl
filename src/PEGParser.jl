@@ -71,7 +71,6 @@ function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, usecache:
 
       # store in cache if we got back a match
       if node !== nothing
-        println("caching: $node")
         cache[cachekey] = node
       end
     end
