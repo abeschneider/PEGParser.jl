@@ -25,7 +25,7 @@ toexpr(node, cnodes, ::MatchRule{:number}) = parseint(node.value)
 toexpr(node, cnodes, ::MatchRule{:op}) = symbol(node.value)
 
 data = "(+ (/ 4 3) 5)"
-(ast, pos, error) = parse(calcgrammar, data, cache=false)
+(ast, pos, error) = parse(calcgrammar, data)
 println(ast)
 
 code = transform(toexpr, ast)

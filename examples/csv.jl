@@ -6,7 +6,7 @@ using PEGParser
 @grammar csv begin
   start = list(record, crlf)
   record = list(field, comma)
-  field = (escaped_field | unescaped_field)[(ast) -> ast.children]
+  field = (escaped_field | unescaped_field)[(ast) -> ast.children[1]]
   escaped_field = (-dquote + escaped_field_value + -dquote)[1]
   escaped_field_value = (r"[ ,\n\r!#$%&'()*+\-./0-~]+" | -dquote2)[1]
   unescaped_field = r"[ !#$%&'()*+\-./0-~]+"
@@ -27,7 +27,7 @@ data = """
 this,is,a,"test and only a test"
 """
 
-(ast, pos, error) = parse(csv, data, cache=false)
+(ast, pos, error) = parse(csv, data)
 println(ast)
 result = transform(toarrays, ast)
 println("---------------")

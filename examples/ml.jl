@@ -2,10 +2,10 @@ using PEGParser
 
 @grammar mlgrammar begin
   start = (+(cell))[1]
-  expr = (lst | atom)[(ast) -> ast.children]
+  expr = (lst | atom)[(ast) -> ast.children[1]]
   cell = (-space + list(expr, space))[1]
   lst = (-lparen + +(cell) + -rparen)[1]
-  atom = (boolean | integer | string | symbol)[(ast) -> ast.children]
+  atom = (boolean | integer | string | symbol)[(ast) -> ast.children[1]]
   boolean = "#t" | "#f"
   integer = r"[1-9][0-9]*"
   string = -dquote + r"[^\"]*" + -dquote
@@ -29,7 +29,7 @@ function toexpr(node, cvalues, ::MatchRule{:lst})
 end
 
 data = "(println \"test: \" (* 10 (- 5 6)))"
-(ast, pos, error) = parse(mlgrammar, data, cache=false)
+(ast, pos, error) = parse(mlgrammar, data)
 println(ast)
 code = transform(toexpr, ast)
 println("code = $(code)")
