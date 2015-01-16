@@ -1,6 +1,6 @@
 using PEGParser
 
-@grammar mlgrammar begin
+@grammar lispgrammar begin
   start = (+(cell))[1]
   expr = (lst | atom)[(ast) -> ast.children[1]]
   cell = (-space + list(expr, space))[1]
@@ -29,7 +29,7 @@ function toexpr(node, cvalues, ::MatchRule{:lst})
 end
 
 data = "(println \"test: \" (* 10 (- 5 6)))"
-(ast, pos, error) = parse(mlgrammar, data)
+(ast, pos, error) = parse(lispgrammar, data)
 println(ast)
 code = transform(toexpr, ast)
 println("code = $(code)")
