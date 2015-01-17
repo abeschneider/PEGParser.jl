@@ -104,9 +104,6 @@ And to use the grammar:
 ```julia
 (node, pos, error) = parse(grammar, "5*(42+3+6+10+2)")
 
-# A ::MatchRule{:default} can be specified and will be used for anything that isn't
-# explicitely defined and is not on the ignore list
-
 toexpr(node, cnodes, ::MatchRule{:default}) = cnodes
 toexpr(node, cnodes, ::MatchRule{:termop}) = Expr(:call, cnodes[2], cnodes[1], cnodes[3])
 toexpr(node, cnodes, ::MatchRule{:exprop}) = Expr(:call, cnodes[2], cnodes[1], cnodes[3])
@@ -114,7 +111,6 @@ toexpr(node, cnodes, ::MatchRule{:number}) = parseint(node.value)
 toexpr(node, cnodes, ::MatchRule{:op1}) = symbol(node.value)
 toexpr(node, cnodes, ::MatchRule{:op2}) = symbol(node.value)
 
-# Note: the ignore list -- these will produce no output when encountered.
 result = transform(toexpr, node)
 
 println(result) # 315.0
