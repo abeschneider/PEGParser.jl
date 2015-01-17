@@ -27,24 +27,16 @@ function parse(grammar::Grammar, text::String; cache=true, start=:start)
   return (ast, pos, error);
 end
 
-function transform(fn::Function, node::Node; ignore=[])
-  return transform(fn, node, Set{Symbol}(ignore))
+function transform(fn::Function, node::Node)
+  return transform(fn, node)
 end
 
 isleaf(node::Node) = isempty(node.children)
 
-function transform(fn::Function, node::Node, ignore::Set{Symbol})
-  if node.sym !== nothing && node.sym in ignore
-    return nothing
-  end
-
+function transform(fn::Function, node::Node)
   # TODO: This is ugly .. is there a better solution?
   cvalues = filter(el -> el !== nothing,
-    [transform(fn, child, ignore) for child in node.children])
-
-  # if (length(cvalues) == 1)
-  #   cvalues = cvalues[1]
-  # end
+    [transform(fn, child) for child in node.children])
 
   if node.sym !== nothing && method_exists(fn, (Node, Any, MatchRule{node.sym}))
     label = MatchRule{node.sym}()
