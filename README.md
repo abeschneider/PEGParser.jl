@@ -1,7 +1,7 @@
 # PEGParser
 
 
-PEGParser is a PEG Parser for Julia with Packrat capabilties. PEGParser was inspired by pyparsing, parsimonious, boost::spirit, as well as several others. 
+PEGParser is a PEG Parser for Julia with Packrat capabilties. PEGParser was inspired by pyparsing, parsimonious, boost::spirit, as well as several others.
 ## Defining a grammar
 
 To define a grammar you can write:
@@ -75,17 +75,27 @@ println(result) # "<b>test</b>"
 Transforms can also be used to calculate a value from the tree. Consider the standard calculator app:
 
 ```julia
-@grammar calc begin
-  start = expr
-  number = r"([0-9]+)"
-  expr = (term + op1 + expr) | term
-  term = (factor + op2 + term) | factor
-  factor = number | pfactor
-  pfactor = lparen + expr + rparen
-  op1 = '+' | '-'
-  op2 = '*' | '/'
-  lparen = "("
-  rparen = ")"
+@grammar calcgrammar begin
+  start = (expr)[(ast) -> ast.children[1]]
+
+  exprop = term + op1 + expr
+  expr = (exprop | term)[(ast) -> ast.children[1]]
+  termop = factor + op2 + term
+  term = (termop | factor)[(ast) -> ast.children[1]]
+  factor = (number | pfactor)[(ast) -> ast.children[1]]
+  pfactor = (-lparen + expr + -rparen)[(ast) -> ast.children[1]]
+
+  op1 = (add | sub)[1]
+  op2 = (mult | div)[1]
+
+  number = (-space + r"[1-9][0-9]*")[1]
+  add = (-space + "+")[1]
+  sub = (-space + "-")[1]
+  mult = (-space + "*")[1]
+  div = (-space + "/")[1]
+  lparen = space + "("
+  rparen = space + ")"
+  space = r"[ \n\r\t]*"
 end
 ```
 
@@ -96,18 +106,16 @@ And to use the grammar:
 
 # A ::MatchRule{:default} can be specified and will be used for anything that isn't
 # explicitely defined and is not on the ignore list
-evaluate(node, cvalues, ::MatchRule{:number}) = float(node.value)
-evaluate(node, cvalues, ::MatchRule{:expr}) = 
-  length(children) == 1 ? children : eval(Expr(:call, cvalues[2], cvalues[1], cvalues[3]))
-evaluate(node, cvalues, ::MatchRule{:factor}) = cvalues
-evaluate(node, cvalues, ::MatchRule{:pfactor}) = cvalue 
-evaluate(node, cvalues, ::MatchRule{:term}) = 
-  length(children) == 1 ? children : eval(Expr(:call, cvalues[2], cvalues[1], cvalues[3]))
-evaluate(node, cvalues, ::MatchRule{:op1}) = symbol(node.value)
-evaluate(node, cvalues, ::MatchRule{:op2}) = symbol(node.value)
+
+toexpr(node, cnodes, ::MatchRule{:default}) = cnodes
+toexpr(node, cnodes, ::MatchRule{:termop}) = Expr(:call, cnodes[2], cnodes[1], cnodes[3])
+toexpr(node, cnodes, ::MatchRule{:exprop}) = Expr(:call, cnodes[2], cnodes[1], cnodes[3])
+toexpr(node, cnodes, ::MatchRule{:number}) = parseint(node.value)
+toexpr(node, cnodes, ::MatchRule{:op1}) = symbol(node.value)
+toexpr(node, cnodes, ::MatchRule{:op2}) = symbol(node.value)
 
 # Note: the ignore list -- these will produce no output when encountered.
-result = transform(math, node, ignore=[:lparen, :rparen])
+result = transform(toexpr, node)
 
 println(result) # 315.0
 ```

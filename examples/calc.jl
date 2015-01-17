@@ -30,7 +30,6 @@ toexpr(node, cnodes, ::MatchRule{:number}) = parseint(node.value)
 toexpr(node, cnodes, ::MatchRule{:op1}) = symbol(node.value)
 toexpr(node, cnodes, ::MatchRule{:op2}) = symbol(node.value)
 
-
 data = "4+5*5*(4+3)"
 (ast, pos, error) = parse(calcgrammar, data)
 println(ast)
