@@ -25,7 +25,9 @@ The following rules can be used:
 * One or more: `+((a + b) | (c + d))`
 * Zero or more: `*((a + b) | (c + d))`
 * Regular expressions: `r"[a-zA-Z]+"`
-* Lists: `list(a+b, c)`
+* Lists: `list(rule, delim)` *or* `list(rule, delim, min=1)`
+* Suppression: `-rule`
+* Selection rule: `rule[fn]`
 
 #### TODO
 Multiple: `(a+b)^(3, 5)`
@@ -99,7 +101,20 @@ Transforms can also be used to calculate a value from the tree. Consider the sta
 end
 ```
 
-And to use the grammar:
+You will notice that some rules end in `[...]`, which is called a selection rule. This allows a user-defined function to be invoked whenever the given rule matches, which can be useful during the transform phase. The user-defined function takes the form of: `(node) -> node`. Two common use-cases of this are:
+
+* **or**: Given the rule `a|b|c`, the resulting match for `a` will be: `rule -> or-rule -> a`. In this case, the `or-rule` doesn't add information, and instead `rule -> a` is preferable. The function:
+```julia
+(node) -> Node(node.name, node.children[i].value, node.children[i].first, ndoe.children[i].last, node.children[i].children, node.children[i].ruleType)
+```
+will remove the extraneous `or-rule`. This can be simplified as `rule[i]`.
+* **and**: Given the rule `-lparen + rule2 + -rparen`, the resulting match of `rule2` will be: `rule -> and-rule -> rule2`. While both `lparen` and `rparen` are suppressed, `rule2` is still a child of the `and-rule`. The selection rule for `rule` can be given as:
+```julia
+(node) -> node.children[1]
+```
+
+
+To use the grammar to generate a Julia expression:
 
 ```julia
 (node, pos, error) = parse(grammar, "5*(42+3+6+10+2)")
