@@ -44,7 +44,7 @@ Suppose you want a parser that takes input and converts `[text]` into `<b>text<>
   bold_text = bold_open + text + bold_code
 
   # use a regular expression to define the text
-  text = r"[a-zA-z]"
+  text = r"[a-zA-z]*"
 
   bold_open = '['
   bold_close = ']'
