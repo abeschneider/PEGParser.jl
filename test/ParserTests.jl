@@ -386,6 +386,6 @@ import PEGParser: Node
 
     (ast, pos, error) = parse(grammar, "", cache=false)
     @test error === nothing
-    @test ast === nothing
+    @test length(ast.children) == 0
   end
 end

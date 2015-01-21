@@ -239,35 +239,43 @@ end
 
 function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int64, usecache::Bool, cache::Dict{String, Node})
   firstPos = pos
-  (child, pos, error) = parse(grammar, rule.entry, text, pos, usecache, cache)
-
-  # make sure there is at least one
-  if error !== nothing || child === nothing
-    if rule.min > 0
-      return (nothing, pos, ParseError("No match (ListRule)", pos))
-    else
-      return (nothing, pos, nothing)
-    end
-  end
+  # (child, pos, error) = parse(grammar, rule.entry, text, pos, usecache, cache)
+  #
+  # # make sure there is at least one
+  # if error !== nothing || child === nothing
+  #   if rule.min > 0
+  #     return (nothing, pos, ParseError("No match (ListRule)", pos))
+  #   else
+  #     return (nothing, pos, nothing)
+  #   end
+  # end
 
   # number of occurances
-  count = 1
+  count = 0
 
   # check if there is a delim
-  (dchild, pos, error) = parse(grammar, rule.delim, text, pos, usecache, cache)
+  # (dchild, pos, error) = parse(grammar, rule.delim, text, pos, usecache, cache)
 
+  # children = {unref(child)}
+  error = nothing
+  children = {}
   # and continue making matches for as long as we can
-  children = {unref(child)}
-  while error === nothing && child !== nothing
+  while error === nothing #&& child !== nothing
     (child, pos, error) = parse(grammar, rule.entry, text, pos, usecache, cache)
 
     if child !== nothing
+      println("adding: $child")
       push!(children, unref(child))
       (dchild, pos, error) = parse(grammar, rule.delim, text, pos, usecache, cache)
+    else
+      println("breaking")
+      break
     end
 
     count += 1
   end
+
+  println("count = $count")
 
   if count < rule.min
     return (nothing, pos, ParseError("No match (ListRule)", pos))
@@ -289,6 +297,7 @@ function uncached_parse(grammar::Grammar, rule::SelectionRule, text::String, pos
 
   if ast !== nothing
     if typeof(rule.selection) === Int64
+      # println("ast = $ast")
       child = ast.children[rule.selection]
       node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
       return (node, pos, error)
