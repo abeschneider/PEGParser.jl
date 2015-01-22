@@ -251,7 +251,6 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int
     (child, pos, error) = parse(grammar, rule.entry, text, pos, usecache, cache)
 
     if child !== nothing
-      println("adding: $child")
       push!(children, unref(child))
       (dchild, pos, error) = parse(grammar, rule.delim, text, pos, usecache, cache)
     else
