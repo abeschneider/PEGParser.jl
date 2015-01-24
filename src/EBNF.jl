@@ -282,9 +282,6 @@ type EmptyRule <: Rule
 end
 
 function parseDefinition(name::String, expr::Expr)
-  # println("expr = $expr")
-  # dump(expr)
-
   # if it's a macro (e.g. r"regex", then we want to expand it first)
   if expr.head === :macrocall
     return parseDefinition(name, eval(expr))

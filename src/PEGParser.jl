@@ -280,7 +280,6 @@ function uncached_parse(grammar::Grammar, rule::SelectionRule, text::String, pos
 
   if ast !== nothing
     if typeof(rule.selection) === Int64
-      # println("ast = $ast")
       child = ast.children[rule.selection]
       node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
       return (node, pos, error)
