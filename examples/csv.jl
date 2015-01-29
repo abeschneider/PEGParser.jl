@@ -1,8 +1,5 @@
 using PEGParser
 
-# for testing purposes
-# using DataFrames
-
 @grammar csv begin
   start = list(record, crlf)
   record = list(field, comma)
@@ -30,7 +27,7 @@ only a test"
 """
 
 (ast, pos, error) = parse(csv, data)
-println(ast)
+println("ast = $ast")
 result = transform(toarrays, ast)
 println("---------------")
 println(result)

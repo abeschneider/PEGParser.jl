@@ -254,24 +254,24 @@ function convert{T}(::Type{Rule}, n::UnitRange{T})
   return OrRule(terminals);
 end
 
-function parseDefinition(name::String, value::String)
+function parseDefinition(name::String, value::String, parsers)
   return Terminal(name, value);
 end
 
-function parseDefinition(name::String, value::Char)
+function parseDefinition(name::String, value::Char, parsers)
   return Terminal(name, value);
 end
 
-function parseDefinition(name::String, symbol::Symbol)
+function parseDefinition(name::String, symbol::Symbol, parsers)
   return ReferencedRule(name, symbol)
 end
 
-function parseDefinition(name::String, range::UnitRange)
+function parseDefinition(name::String, range::UnitRange, parsers)
   values = [Terminal(value) for value in range];
   return OrRule(name, values);
 end
 
-function parseDefinition(name::String, regex::Regex)
+function parseDefinition(name::String, regex::Regex, parsers)
   # TODO: Need to do this to ensure we always match at the beginning,
   # but there should be a safer way to do this
   modRegex = Regex("^$(regex.pattern)")
@@ -281,86 +281,119 @@ end
 type EmptyRule <: Rule
 end
 
-function parseDefinition(name::String, expr::Expr)
+function |(name::String, parsers::Dict{Symbol, Function}, args::Array)
+  left = parseDefinition("$name.1", args[1], parsers)
+  right = parseDefinition("$name.2", args[2], parsers)
+  return OrRule(name, left, right)
+end
+
+function +(name::String, parsers::Dict{Symbol, Function}, args::Array)
+  if length(args) > 1
+    # Addition can contain multiple entries
+    values::Array{Rule} = [parseDefinition("$name.$i", arg, parsers) for (i, arg) in enumerate(args)]
+    return AndRule(name, values)
+  else
+    # it's prefix, so it maps to one or more rule
+    return OneOrMoreRule(name, parseDefinition("$name.values", args[1], parsers))
+  end
+end
+
+function -(name::String, parsers::Dict{Symbol, Function}, args::Array)
+  if length(args) == 1
+    return SuppressRule(name, parseDefinition("$name.value", args[1], args))
+  end
+end
+
+function ^(name::String, parsers::Dict{Symbol, Function}, args::Array)
+  # FIXME: not sure this is correct..
+  count = args[2]
+  return MultipleRule(args[1], count.args[1], count.args[2])
+end
+
+function *(name::String, parsers::Dict{Symbol, Function}, args::Array)
+  if length(args) == 1
+    # it's a prefix, so it maps to zero or more rule
+    return ZeroOrMoreRule(parseDefinition(name, args[1], parsers))
+  end
+end
+
+function ?(name::String, parsers::Dict{Symbol, Function}, args::Array)
+  return OptionalRule(parseDefinition(name, args[1], parsers))
+end
+
+function list(name::String, parsers::Dict{Symbol, Function}, args::Array)
+  entry = parseDefinition("$name.entry", args[1], parsers)
+  delim = parseDefinition("$name.delim", args[2], parsers)
+
+  if length(args) > 2
+    return ListRule(name, entry, delim, args[3], parsers)
+  end
+
+  return ListRule(name, entry, delim)
+end
+
+function parseDefinition(name::String, expr::Expr, parsers)
   # if it's a macro (e.g. r"regex", then we want to expand it first)
   if expr.head === :macrocall
-    return parseDefinition(name, eval(expr))
+    return parseDefinition(name, eval(expr), parsers)
   end
 
   # using indexing operation to select result of rule
   if expr.head === :ref
-    rule = parseDefinition(name, expr.args[1])
+    rule = parseDefinition(name, expr.args[1], parsers)
     select = eval(expr.args[2])
     return SelectionRule("$name.sel", rule, select)
   end
 
-  if expr.args[1] === :|
-    left = parseDefinition("$name.1", expr.args[2])
-    right = parseDefinition("$name.2", expr.args[3])
-    # rules::Array{Rule} = [left, right]
-    return OrRule(name, left, right)
-  elseif expr.args[1] === :+
-    # check if this is infix or prefix
-    if length(expr.args) > 2
-      # Addition can contain multiple entries
-      values::Array{Rule} = [parseDefinition("$name.$i", arg) for (i, arg) in enumerate(expr.args[2:end])]
-      return AndRule(name, values)
-    else
-      # it's prefix, so it maps to one or more rule
-      return OneOrMoreRule(name, parseDefinition("$name.values", expr.args[2]))
-    end
-  elseif expr.args[1] === :-
-    # it's the prefix form
-    if length(expr.args) == 2
-      return SuppressRule(name, parseDefinition("$name.value", expr.args[2]))
-    end
-  elseif expr.args[1] === :^
-    # an entry can appear N:M times
-    count = expr.args[3]
-    return MultipleRule(expr.args[2], count.args[1], count.args[2]);
-  elseif expr.args[1] === :* && length(expr.args) == 2
-    # it's a prefix, so it maps to zero or more rule
-    return ZeroOrMoreRule(parseDefinition(name, expr.args[2]))
-  elseif expr.args[1] == :?
-    return OptionalRule(parseDefinition(name, expr.args[2]))
-  elseif expr.args[1] == :list
-    entry = parseDefinition("$name.entry", expr.args[2])
-    delim = parseDefinition("$name.delim", expr.args[3])
-    if length(expr.args) > 3
-        return ListRule(name, entry, delim, expr.args[4])
-    end
+  fn = get(parsers, expr.args[1], nothing)
 
-    return ListRule(name, entry, delim)
+  if fn !== Nothing
+    return fn(name, parsers, expr.args[2:end])
   end
 
   return EmptyRule()
 end
 
-function parseGrammar(expr::Expr)
+function parseGrammar(expr::Expr, parsers)
   rules = Dict()
-
   for definition in expr.args[2:2:end]
-    rule = parseDefinition(string(definition.args[1]), definition.args[2])
+    rule = parseDefinition(string(definition.args[1]), definition.args[2], parsers)
     rules[string(definition.args[1])] = rule
   end
 
   return Grammar(rules)
 end
 
-function parseTransform(expr::Expr)
-  transform = Transform()
-
-  for definition in expr.args[2:2:end]
-    println("def = $definition")
+function map_symbol_to_function(lst)
+  m = Dict{Symbol, Function}()
+  for sym in lst
+    m[sym] = eval(sym)
   end
+
+  return m
 end
 
-macro grammar(name::Symbol, expr)
+macro grammar(name::Symbol, args...)
+  parsers = [:list, :+, :*, :?, :|, :-, :^]
+
+  if length(args) == 1
+    expr = args[1]
+  elseif length(args) == 2
+     append!(parsers, args[1])
+    expr = args[2]
+  else
+    # FIXME: make an exception
+    println("error")
+  end
+
+  mapped_parsers = map_symbol_to_function(parsers)
   quote
-    $(esc(name)) = $(parseGrammar(expr))
+    $(esc(name)) = $(parseGrammar(expr, mapped_parsers))
   end
 end
 
-function *(rule::Rule) end
-function ?(rule::Rule) end
-function list(entry::Rule, delim::Rule) end
+# TODO: think about moving code from parseDefinition into these functions
+# so they return the relevant rules
+# function *(rule::Rule) end
+# function ?(rule::Rule) end
+# function list(entry::Rule, delim::Rule) end
