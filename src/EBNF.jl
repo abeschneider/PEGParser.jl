@@ -28,6 +28,7 @@ end
 immutable ReferencedRule <: Rule
   name::String
   symbol::Symbol
+  action
 
   function ReferencedRule(name::String, symbol::Symbol)
     return new(name, symbol)
@@ -174,13 +175,13 @@ immutable SuppressRule <: Rule
   end
 end
 
-immutable SelectionRule <: Rule
+immutable SemanticActionRule <: Rule
   name::String
   rule::Rule
-  selection
+  action
 
-  function SelectionRule(name::String, rule::Rule, selection)
-    return new(name, rule, selection)
+  function SemanticActionRule(name::String, rule::Rule, action)
+    return new(name, rule, action)
   end
 end
 
@@ -341,8 +342,9 @@ function parseDefinition(name::String, expr::Expr, parsers)
   # using indexing operation to select result of rule
   if expr.head === :ref
     rule = parseDefinition(name, expr.args[1], parsers)
-    select = eval(expr.args[2])
-    return SelectionRule("$name.sel", rule, select)
+    # select = eval(expr.args[2])
+    action = expr.args[2]
+    return SemanticActionRule("$name.sel", rule, action)
   end
 
   fn = get(parsers, expr.args[1], nothing)
@@ -379,7 +381,9 @@ macro grammar(name::Symbol, args...)
   if length(args) == 1
     expr = args[1]
   elseif length(args) == 2
-     append!(parsers, args[1])
+    # FIXME: can't eval here .. need to figure out how to add this code to
+    # the generated macro code
+     append!(parsers, eval(args[1]))
     expr = args[2]
   else
     # FIXME: make an exception
@@ -391,9 +395,3 @@ macro grammar(name::Symbol, args...)
     $(esc(name)) = $(parseGrammar(expr, mapped_parsers))
   end
 end
-
-# TODO: think about moving code from parseDefinition into these functions
-# so they return the relevant rules
-# function *(rule::Rule) end
-# function ?(rule::Rule) end
-# function list(entry::Rule, delim::Rule) end

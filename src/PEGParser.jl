@@ -277,19 +277,21 @@ function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos:
   return (nothing, pos, error)
 end
 
-function uncached_parse(grammar::Grammar, rule::SelectionRule, text::String, pos::Int64, cache)
+function uncached_parse(grammar::Grammar, rule::SemanticActionRule, text::String, pos::Int64, cache)
   firstPos = pos
   (ast, pos, error) = uncached_parse(grammar, rule.rule, text, pos, cache)
 
   if ast !== nothing
-    if typeof(rule.selection) === Int64
-      child = ast.children[rule.selection]
-      node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
-      return (node, pos, error)
-    elseif typeof(rule.selection) === Function
-      node = rule.selection(ast)
-      return (node, pos, error)
-    end
+    # if typeof(rule.action) === Int64
+    #   child = ast.children[rule.selection]
+    #   node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
+    #   return (node, pos, error)
+    # elseif typeof(rule.selection) === Function
+    #   node = rule.selection(ast)
+    #   return (node, pos, error)
+    # end
+    node = rule.action(ast)
+    return (node, pos, error)
   end
 
   return (nothing, pos, error)
