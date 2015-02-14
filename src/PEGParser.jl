@@ -2,8 +2,10 @@ module PEGParser
 
 import Base: show, parse
 
-include("Node.jl")
-include("EBNF.jl")
+# include("EBNF.jl")
+include("rules.jl")
+# include("Node.jl")
+
 
 export parse, ParseError, MatchRule, Node, transform, Grammar, Rule
 export @grammar
@@ -50,6 +52,7 @@ function transform(fn::Function, node::Node)
   return fn(node, transformed, label)
 end
 
+unref{T <: Any}(value::T) = value
 unref{T <: Rule}(node::Node, ::Type{T}) = node
 unref(node::Node, ::Type{ReferencedRule}) = node.children[1]
 unref(node::Node) = unref(node, node.ruleType)
@@ -75,15 +78,15 @@ function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::De
   return (node, pos, error)
 end
 
-function uncached_parse(grammar::Grammar, ref::ReferencedRule, text::String, pos::Int64, cache)
-  rule = grammar.rules[ref.symbol]
+function uncached_parse(grammar::Grammar, rule::ReferencedRule, text::String, pos::Int64, cache)
+  refrule = grammar.rules[rule.symbol]
 
   firstPos = pos
-  (childNode, pos, error) = parse(grammar, rule, text, pos, cache)
+  (childNode, pos, error) = parse(grammar, refrule, text, pos, cache)
 
   if childNode !== nothing
-    node = Node(ref.name, text[firstPos:pos-1], firstPos, pos, [childNode], typeof(ref))
-    return (node, pos, error)
+    node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [childNode], typeof(rule))
+    return (rule.action(node), pos, error)
   else
     return (nothing, pos, error)
   end
@@ -98,7 +101,7 @@ function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos::Int64
 
     if child !== nothing
       node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
-      return (node, pos, error)
+      return (rule.action(node), pos, error)
     end
   end
 
@@ -125,7 +128,9 @@ function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos::Int6
   end
 
   node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, value, typeof(rule))
-  return (node, pos, nothing)
+
+  # println("rule.action = $(rule.action)")
+  return (rule.action(node), pos, nothing)
 end
 
 # TODO: there should be string functions that already do this
@@ -151,7 +156,7 @@ function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos::Int
   if string_matches(rule.value, text, pos, pos+size)
     size = length(rule.value)
     node = Node(rule.name, text[pos:pos+size-1], pos, pos+size, [], typeof(rule));
-    return (unref(node), pos+size, nothing)
+    return (rule.action(unref(node)), pos+size, nothing)
   end
 
   len = min(pos+length(rule.value)-1, length(text))
@@ -179,7 +184,7 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos
   end
 
   node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
-  return (node, pos, nothing)
+  return (rule.action(node), pos, nothing)
 end
 
 function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, pos::Int64, cache)
@@ -202,7 +207,7 @@ function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, po
     node = nothing
   end
 
-  return (node, pos, nothing)
+  return (rule.action(node), pos, nothing)
 end
 
 function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::Int64, cache)
@@ -220,7 +225,11 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::In
       pos += length(value.match)
       node = unref(Node(rule.name, text[firstPos:pos-1], firstPos, pos, [], typeof(rule)))
 
-      return (node, pos, nothing)
+      # println("....")
+      # tnode = rule.action(node)
+      # println("----")
+
+      return (rule.action(node), pos, nothing)
     end
   else
     return (nothing, firstPos, ParseError("Could not match RegEx", pos))
@@ -228,12 +237,12 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::In
 end
 
 function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos::Int64, cache)
-  firstPos = pos
   (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
+  firstPos = pos
 
   if child !== nothing
     node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
-    return (node, pos, error)
+    return (rule.action(node), pos, error)
   end
 
   # no error, but we also don't move the position or return a valid node
@@ -268,7 +277,7 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int
   end
 
   node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
-  return (node, pos, nothing)
+  return (rule.action(node), pos, nothing)
 end
 
 function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos::Int64, cache)
@@ -277,24 +286,24 @@ function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos:
   return (nothing, pos, error)
 end
 
-function uncached_parse(grammar::Grammar, rule::SemanticActionRule, text::String, pos::Int64, cache)
-  firstPos = pos
-  (ast, pos, error) = uncached_parse(grammar, rule.rule, text, pos, cache)
-
-  if ast !== nothing
-    # if typeof(rule.action) === Int64
-    #   child = ast.children[rule.selection]
-    #   node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
-    #   return (node, pos, error)
-    # elseif typeof(rule.selection) === Function
-    #   node = rule.selection(ast)
-    #   return (node, pos, error)
-    # end
-    node = rule.action(ast)
-    return (node, pos, error)
-  end
-
-  return (nothing, pos, error)
-end
+# function uncached_parse(grammar::Grammar, rule::SemanticActionRule, text::String, pos::Int64, cache)
+#   firstPos = pos
+#   (ast, pos, error) = uncached_parse(grammar, rule.rule, text, pos, cache)
+#
+#   if ast !== nothing
+#     # if typeof(rule.action) === Int64
+#     #   child = ast.children[rule.selection]
+#     #   node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
+#     #   return (node, pos, error)
+#     # elseif typeof(rule.selection) === Function
+#     #   node = rule.selection(ast)
+#     #   return (node, pos, error)
+#     # end
+#     node = rule.action(ast)
+#     return (node, pos, error)
+#   end
+#
+#   return (nothing, pos, error)
+# end
 
 end

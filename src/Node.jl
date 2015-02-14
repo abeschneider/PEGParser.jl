@@ -1,4 +1,4 @@
-include("EBNF.jl")
+# include("EBNF.jl")
 
 immutable Node
   name::String
@@ -9,6 +9,10 @@ immutable Node
   ruleType::Type
   sym::Any
 
+  function Node(node::Node)
+    return new(node.name, node.value, node.first, node.last, node.children, node.ruleType, node.sym)
+  end
+
   function Node(name::String, value::String, first::Int64, last::Int64, children::Array, ruleType::Type)
     if length(name) == 0
       sym = nothing
@@ -16,6 +20,7 @@ immutable Node
       sym = symbol(name)
     end
 
+    # println("creating node: $name, value: $value, children: $children")
     return new(name, value, first, last, children, ruleType, sym)
   end
 end
@@ -23,13 +28,6 @@ end
 function Node(name::String, value::String, first::Int64, last::Int64, typ)
   return Node(name, value, first, last, [], typ)
 end
-
-# by default don't show anything
-displayValue{T <: Rule}(value, ::Type{T}) = ""
-
-# except for terminals and regex
-displayValue(value, ::Type{Terminal}) = "'$value',"
-displayValue(value, ::Type{RegexRule}) = "'$value',"
 
 function show(io::IO, node::Node, indent)
   println(io, "node($(node.name)) {$(displayValue(node.value, node.ruleType))$(node.ruleType)}")
