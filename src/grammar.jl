@@ -8,23 +8,6 @@ type Grammar
   rules::Dict{Symbol, Rule}
 end
 
-
-
-
-
-# function convert{T}(::Type{Rule}, n::T)
-#   return Terminal(n);
-# end
-#
-# function convert{T<:Rule}(::Type{Rule}, n::T)
-#   return n;
-# end
-#
-# function convert{T}(::Type{Rule}, n::UnitRange{T})
-#   terminals = [Terminal(i) for i=(n.start):(n.stop)];
-#   return OrRule(terminals);
-# end
-
 type EmptyRule <: Rule
 end
 
@@ -45,12 +28,7 @@ function parseDefinition(name::String, expr::Expr, pdata::ParserData)
   # using indexing operation to select result of rule
   if expr.head === :ref
     rule = parseDefinition(name, expr.args[1], pdata)
-    # select = eval(expr.args[2])
-    # rule.action = eval(expr.args[2])
-    # println("fn = $(expr.args)")
-    # rule.action = expr.args[2] #Expr(:escape, expr.args[2])
     rule.action = expr.args[2]
-    #return SemanticActionRule("$name.sel", rule, action)
     return rule
   end
 
@@ -77,36 +55,10 @@ end
 function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
   code = {}
   push!(code, :(rules = Dict()))
+
   for definition in expr.args[2:2:end]
-    # name = Expr(:call, :string, Expr(:quote, definition.args[1]))
     name = string(definition.args[1])
-    # ex = Expr(:quote, definition.args[2])
-
-    # rules[name] = parseDefinition(name, ex, nothing)
     ref_by_name = Expr(:ref, :rules, name)
-
-    # maybe call this function directly, but encode the rule? this way
-    # the action may be captured..
-    # parse_call = Expr(:call, :parseDefinition, name, ex, pdata)
-    # rule = parseDefinition(name, definition.args[2], pdata)
-
-    # println("name = $name")
-    # println("ex = $ex")
-    # push!(code, Expr(:(=), :rule, parse_call))
-    # Expr(:ref, :rules, name)
-
-    # act = Expr(:(.), :rule, :(:action))
-    # push!(code, Expr(:call, :println, act)) #Expr(:call, act, nothing)))
-    # push!(code, Expr(:call, :println, Expr(:call, :eval, Expr(:quote, act))))
-    # push!(code, Expr(:call, :println, Expr(:call, :names, Main)))
-    # push!(code, esc(Expr(:call, :println, Expr(:call, :eval, act))))
-    # push!(code, Expr(:(=),
-    #               Expr(:(.), :rule, :(:action)),
-    #               esc(Expr(:call, :eval, Expr(:(.), :rule, :(:action))))))
-
-    # push!(code, :(action = rule.action))
-    # push!(code, :(rule.action = eval($(esc(action)))))
-    # push!(code, Expr(:(=), Expr(:ref, :rules, name), :rule))
 
     rule = parseDefinition(name, definition.args[2], pdata)
     rule_action = rule.action
@@ -125,28 +77,8 @@ function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
     end
 
     push!(code, rcode)
-
-    # println(rcode)
-
-    # something like..?
-    # push!(code, Expr(:(=), :tmp, rule))
-    # push!(rule.action = eval(rule.action))?
-    # push!(code, :(rule = parseDefinition($name, :($(definition.args[2])), $pdata)))
-    # push!(code, :(rule.action = eval(rule)))
-    # push!(code, :(rules[$name] = rule))
-
-    # println("rule.action = $(rule.action)")
-    # println(quote
-    #   rule.action = eval(rule.action)
-    # end)
-
-    # push!(code, Expr(:(=), ref_by_name, rule))
   end
 
-  # grammar_name = Grammar(rules)
-  # push!(code, :($(esc(grammar_name)) = Grammar(rules)))
   push!(code, :($(esc(grammar_name)) = Grammar(rules)))
-
-  # group all code into a single block
   return Expr(:block, code...)
 end

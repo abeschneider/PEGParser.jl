@@ -79,13 +79,7 @@ function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::De
 end
 
 function make_node(rule, value, first, last, children)
-  # return rule.action(rule, value, first, last, children)
-  # return (rule, value, first, last, children) -> rule.action()
-  # println("children = $children")
-  # return
-  value = rule.action(rule, value, first, last, children)
-  # println("\tvalue = $value")
-  return value
+  return rule.action(rule, value, first, last, children)
 end
 
 function uncached_parse(grammar::Grammar, rule::ReferencedRule, text::String, pos::Int64, cache)
@@ -94,12 +88,9 @@ function uncached_parse(grammar::Grammar, rule::ReferencedRule, text::String, po
   firstPos = pos
   (childNode, pos, error) = parse(grammar, refrule, text, pos, cache)
 
-  println("rule = $(rule.name)")
   if childNode !== nothing
-    # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [childNode], typeof(rule))
     node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [childNode])
     return (node, pos, error)
-    # return (rule.action(node), pos, error)
   else
     return (nothing, pos, error)
   end
