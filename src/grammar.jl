@@ -26,7 +26,13 @@ function parseDefinition(name::String, expr::Expr, pdata::ParserData)
   end
 
   # using indexing operation to select result of rule
-  if expr.head === :ref
+  # if expr.head === :ref
+  #   rule = parseDefinition(name, expr.args[1], pdata)
+  #   rule.action = expr.args[2]
+  #   return rule
+  # end
+
+  if expr.head === :curly
     rule = parseDefinition(name, expr.args[1], pdata)
     rule.action = expr.args[2]
     return rule
@@ -39,17 +45,6 @@ function parseDefinition(name::String, expr::Expr, pdata::ParserData)
   end
 
   return (EmptyRule(), nothing)
-end
-
-function parseGrammar_old(expr::Expr, parsers)
-  rules = Dict()
-  for definition in expr.args[2:2:end]
-    rule = parseDefinition(string(definition.args[1]), definition.args[2], parsers)
-
-    rules[string(definition.args[1])] = rule
-  end
-
-  return Grammar(rules)
 end
 
 function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
