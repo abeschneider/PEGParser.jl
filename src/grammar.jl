@@ -109,14 +109,19 @@ function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
     # push!(code, Expr(:(=), Expr(:ref, :rules, name), :rule))
 
     rule = parseDefinition(name, definition.args[2], pdata)
+    rule_action = rule.action
+    action_type = typeof(rule_action)
     rcode = quote
-      # rule =
-      # rule.action = eval(rule.action)
       rules[$name] = $(esc(rule))
-      # tmp = $(esc(rules[name].action))
-      # ex = rules[$name].action
-      rules[$name].action = eval($(esc(rule.action)))
-      # println("action = $(rules[$name].action)")
+      if typeof($(esc(action_type))) !== Function
+        rules[$name].action = (rule, value, first, last, children) -> begin
+          return $(rule_action)
+        end
+      else
+        rules[$name].action = (rule, value, first, last, children) -> begin
+          $(rule_action)(rule, value, first, last, children)
+        end
+      end
     end
 
     push!(code, rcode)

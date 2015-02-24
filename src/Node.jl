@@ -5,7 +5,7 @@ immutable Node
   value::String
   first::Int64
   last::Int64
-  children::Array{Node}
+  children #::Array{Node}
   ruleType::Type
   sym::Any
 

@@ -78,15 +78,28 @@ function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::De
   return (node, pos, error)
 end
 
+function make_node(rule, value, first, last, children)
+  # return rule.action(rule, value, first, last, children)
+  # return (rule, value, first, last, children) -> rule.action()
+  # println("children = $children")
+  # return
+  value = rule.action(rule, value, first, last, children)
+  # println("\tvalue = $value")
+  return value
+end
+
 function uncached_parse(grammar::Grammar, rule::ReferencedRule, text::String, pos::Int64, cache)
   refrule = grammar.rules[rule.symbol]
 
   firstPos = pos
   (childNode, pos, error) = parse(grammar, refrule, text, pos, cache)
 
+  println("rule = $(rule.name)")
   if childNode !== nothing
-    node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [childNode], typeof(rule))
-    return (rule.action(node), pos, error)
+    # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [childNode], typeof(rule))
+    node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [childNode])
+    return (node, pos, error)
+    # return (rule.action(node), pos, error)
   else
     return (nothing, pos, error)
   end
@@ -95,13 +108,14 @@ end
 function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos::Int64, cache)
   # Try branches in order (left to right). The first branch to match will be marked
   # as a success. If no branches match, then return an error.
-  firstPos = pos;
+  firstPos = pos
   for branch in rule.values
     (child, pos, error) = parse(grammar, branch, text, pos, cache)
 
     if child !== nothing
-      node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
-      return (rule.action(node), pos, error)
+      # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
+      node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [unref(child)])
+      return (node, pos, error)
     end
   end
 
@@ -127,10 +141,11 @@ function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos::Int6
     end
   end
 
-  node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, value, typeof(rule))
-
+  # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, value, typeof(rule))
+  # println("make_node($rule, $(text[firstPos:pos-1]), $firstPos, $pos, $value)")
+  node = make_node(rule, text[firstPos:pos-1], firstPos, pos, value)
   # println("rule.action = $(rule.action)")
-  return (rule.action(node), pos, nothing)
+  return (node, pos, nothing)
 end
 
 # TODO: there should be string functions that already do this
@@ -155,8 +170,9 @@ function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos::Int
 
   if string_matches(rule.value, text, pos, pos+size)
     size = length(rule.value)
-    node = Node(rule.name, text[pos:pos+size-1], pos, pos+size, [], typeof(rule));
-    return (rule.action(unref(node)), pos+size, nothing)
+    # node = Node(rule.name, text[pos:pos+size-1], pos, pos+size, [], typeof(rule))
+    node = make_node(rule, text[pos:pos+size-1], pos, pos+size, [])
+    return (unref(node), pos+size, nothing)
   end
 
   len = min(pos+length(rule.value)-1, length(text))
@@ -183,8 +199,9 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos
     end
   end
 
-  node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
-  return (rule.action(node), pos, nothing)
+  # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
+  node = make_node(rule, text[firstPos:pos-1], firstPos, pos, children)
+  return (node, pos, nothing)
 end
 
 function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, pos::Int64, cache)
@@ -202,12 +219,13 @@ function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, po
   end
 
   if length(children) > 0
-    node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
+    # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
+    node = make_node(rule, text[firstPos:pos-1], firstPos, pos, children)
   else
     node = nothing
   end
 
-  return (rule.action(node), pos, nothing)
+  return (node, pos, nothing)
 end
 
 function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::Int64, cache)
@@ -223,13 +241,14 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::In
       return (nothing, firstPos, nothing)
     else
       pos += length(value.match)
-      node = unref(Node(rule.name, text[firstPos:pos-1], firstPos, pos, [], typeof(rule)))
+      node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [])
+      # node = unref(Node(rule.name, text[firstPos:pos-1], firstPos, pos, [], typeof(rule)))
 
       # println("....")
       # tnode = rule.action(node)
       # println("----")
 
-      return (rule.action(node), pos, nothing)
+      return (unref(node), pos, nothing)
     end
   else
     return (nothing, firstPos, ParseError("Could not match RegEx", pos))
@@ -241,8 +260,9 @@ function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos:
   firstPos = pos
 
   if child !== nothing
-    node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
-    return (rule.action(node), pos, error)
+    # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
+    node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [unref(child)])
+    return (unref(node), pos, error)
   end
 
   # no error, but we also don't move the position or return a valid node
@@ -276,8 +296,9 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int
     return (nothing, pos, ParseError("No match (ListRule)", pos))
   end
 
-  node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
-  return (rule.action(node), pos, nothing)
+  # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
+  node = make_node(rule, text[firstPos:pos-1], firstPos, pos, children)
+  return (node, pos, nothing)
 end
 
 function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos::Int64, cache)
