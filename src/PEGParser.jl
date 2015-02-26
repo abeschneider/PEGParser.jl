@@ -34,6 +34,9 @@ function parse(grammar::Grammar, text::String; cache=nothing, start=:start)
   return (ast, pos, error)
 end
 
+# default transform is to do nothing
+transform{T}(fn::Function, value::T) = value
+
 function transform(fn::Function, node::Node)
   return transform(fn, node)
 end

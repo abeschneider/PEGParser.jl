@@ -25,13 +25,6 @@ function parseDefinition(name::String, expr::Expr, pdata::ParserData)
     return parseDefinition(name, eval(expr), pdata)
   end
 
-  # using indexing operation to select result of rule
-  # if expr.head === :ref
-  #   rule = parseDefinition(name, expr.args[1], pdata)
-  #   rule.action = expr.args[2]
-  #   return rule
-  # end
-
   if expr.head === :curly
     rule = parseDefinition(name, expr.args[1], pdata)
     rule.action = expr.args[2]
@@ -60,7 +53,7 @@ function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
     action_type = typeof(rule_action)
     rcode = quote
       rules[$name] = $(esc(rule))
-      if typeof($(esc(action_type))) !== Function
+      if $(esc(action_type)) !== Function
         rules[$name].action = (rule, value, first, last, children) -> begin
           return $(rule_action)
         end

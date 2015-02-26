@@ -34,7 +34,11 @@ function show(io::IO, node::Node, indent)
   for (i, child) in enumerate(node.children)
     print(io, "  "^indent)
     print(io, "$i: ")
-    show(io, child, indent+1)
+    if typeof(child) === Node
+      show(io, child, indent+1)
+    else
+      println(child)
+    end
   end
 end
 
