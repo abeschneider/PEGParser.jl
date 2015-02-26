@@ -2,13 +2,13 @@ using PEGParser
 
 @grammar calc1 begin
   start = (number + op + number) {
-    apply(eval(children[2]), children[1], children[3])
+    apply(eval(_2), _1, _3)
   }
 
-  op = (plus | minus) { children[1] }
-  number = (-space + r"[0-9]+") {parseint(children[1].value)}
-  plus = (-space + "+") {symbol(children[1].value)}
-  minus = (-space + "-") {symbol(children[1].value)}
+  op = (plus | minus) { _1 }
+  number = (-space + r"[0-9]+") {parseint(_1.value)}
+  plus = (-space + "+") {symbol(_1.value)}
+  minus = (-space + "-") {symbol(_1.value)}
   space = r"[ \t\n\r]*"
 end
 

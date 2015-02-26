@@ -51,10 +51,15 @@ function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
     rule = parseDefinition(name, definition.args[2], pdata)
     rule_action = rule.action
     action_type = typeof(rule_action)
+
     rcode = quote
       rules[$name] = $(esc(rule))
       if $(esc(action_type)) !== Function
         rules[$name].action = (rule, value, first, last, children) -> begin
+          for (i, child) in enumerate(children)
+            eval(Expr(:(=), symbol("_$i"), child))
+          end
+          
           return $(rule_action)
         end
       else

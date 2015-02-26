@@ -1,24 +1,24 @@
 using PEGParser
 
 @grammar calc3 begin
-  start = expr { children[1] }
+  start = expr { _1 }
 
   expr_op = term + op1 + expr
-  expr = (expr_op | term) { children[1] }
+  expr = (expr_op | term) { _1 }
   term_op = factor + op2 + term
 
-  term = (term_op | factor) { children[1] }
-  factor = (number | pfactor) { children[1] }
-  pfactor = (-lparen + expr + -rparen) { children[1] }
+  term = (term_op | factor) { _1 }
+  factor = (number | pfactor) { _1 }
+  pfactor = (-lparen + expr + -rparen) { _1 }
 
-  op1 = (add | sub) { children[1] }
-  op2 = (mult | div) { children[1] }
+  op1 = (add | sub) { _1 }
+  op2 = (mult | div) { _1 }
 
-  number = (-space + r"[1-9][0-9]*") { parseint(children[1].value) }
-  add = (-space + "+") { symbol(children[1].value) }
-  sub = (-space + "-") { symbol(children[1].value) }
-  mult = (-space + "*") { symbol(children[1].value) }
-  div = (-space + "/") { symbol(children[1].value) }
+  number = (-space + r"[1-9][0-9]*") { parseint(_1.value) }
+  add = (-space + "+") { symbol(_1.value) }
+  sub = (-space + "-") { symbol(_1.value) }
+  mult = (-space + "*") { symbol(_1.value) }
+  div = (-space + "/") { symbol(_1.value) }
 
   lparen = space + "("
   rparen = space + ")"
