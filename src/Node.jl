@@ -13,7 +13,7 @@ immutable Node
     return new(node.name, node.value, node.first, node.last, node.children, node.ruleType, node.sym)
   end
 
-  function Node(name::String, value::String, first::Int64, last::Int64, children::Array, ruleType::Type)
+  function Node(name::String, value::String, first::Int64, last::Int64, children, ruleType::Type)
     if length(name) == 0
       sym = nothing
     else
@@ -37,7 +37,7 @@ function show(io::IO, node::Node, indent)
     if typeof(child) === Node
       show(io, child, indent+1)
     else
-      println(child)
+      println(io, child)
     end
   end
 end

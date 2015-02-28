@@ -1,22 +1,18 @@
 using PEGParser
 
 @grammar csv begin
-  start = list(record, crlf)
-  record = list(field, comma)
-  field = (escaped_field | unescaped_field)[(ast) -> ast.children[1]]
-  escaped_field = (-dquote + escaped_field_value + -dquote)[1]
-  escaped_field_value = (r"[ ,\n\r!#$%&'()*+\-./0-~]+" | -dquote2)[1]
-  unescaped_field = r"[ !#$%&'()*+\-./0-~]+"
+  start = list(record, crlf) { children }
+  record = list(field, comma) { children }
+  field = (escaped_field | unescaped_field) { _1 }
+  escaped_field = (dquote + escaped_field_value + dquote) { _2 }
+  escaped_field_value = r"[ ,\n\r!#$%&'()*+\-./0-~]+|\"\"" { value }
+  unescaped_field = r"[ !#$%&'()*+\-./0-~]+" { value }
   crlf = r"[\n\r]+"
   dquote = '"'
   dqoute2 = "\"\""
   comma = ','
 end
 
-
-toarrays(node::Node, cvalues, ::MatchRule{:default}) = cvalues
-toarrays(node::Node, cvalues, ::MatchRule{:unescaped_field}) = node.value
-toarrays(node::Node, cvalues, ::MatchRule{:escaped_field}) = node.value
 
 data = """
 1,2,3
@@ -28,6 +24,3 @@ only a test"
 
 (ast, pos, error) = parse(csv, data)
 println("ast = $ast")
-result = transform(toarrays, ast)
-println("---------------")
-println(result)

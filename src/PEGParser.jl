@@ -2,10 +2,7 @@ module PEGParser
 
 import Base: show, parse
 
-# include("EBNF.jl")
 include("rules.jl")
-# include("Node.jl")
-
 
 export parse, ParseError, MatchRule, Node, transform, Grammar, Rule
 export @grammar
@@ -57,7 +54,7 @@ end
 
 unref{T <: Any}(value::T) = value
 unref{T <: Rule}(node::Node, ::Type{T}) = node
-unref(node::Node, ::Type{ReferencedRule}) = node.children[1]
+unref(node::Node, ::Type{ReferencedRule}) = node.children #[1]
 unref(node::Node) = unref(node, node.ruleType)
 
 function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::Nothing = nothing)
@@ -92,7 +89,7 @@ function uncached_parse(grammar::Grammar, rule::ReferencedRule, text::String, po
   (childNode, pos, error) = parse(grammar, refrule, text, pos, cache)
 
   if childNode !== nothing
-    node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [childNode])
+    node = make_node(rule, text[firstPos:pos-1], firstPos, pos, childNode)
     return (node, pos, error)
   else
     return (nothing, pos, error)
@@ -107,7 +104,6 @@ function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos::Int64
     (child, pos, error) = parse(grammar, branch, text, pos, cache)
 
     if child !== nothing
-      # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
       node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [unref(child)])
       return (node, pos, error)
     end
@@ -135,10 +131,7 @@ function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos::Int6
     end
   end
 
-  # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, value, typeof(rule))
-  # println("make_node($rule, $(text[firstPos:pos-1]), $firstPos, $pos, $value)")
   node = make_node(rule, text[firstPos:pos-1], firstPos, pos, value)
-  # println("rule.action = $(rule.action)")
   return (node, pos, nothing)
 end
 
@@ -164,9 +157,8 @@ function uncached_parse(grammar::Grammar, rule::Terminal, text::String, pos::Int
 
   if string_matches(rule.value, text, pos, pos+size)
     size = length(rule.value)
-    # node = Node(rule.name, text[pos:pos+size-1], pos, pos+size, [], typeof(rule))
     node = make_node(rule, text[pos:pos+size-1], pos, pos+size, [])
-    return (unref(node), pos+size, nothing)
+    return (node, pos+size, nothing)
   end
 
   len = min(pos+length(rule.value)-1, length(text))
@@ -193,7 +185,6 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos
     end
   end
 
-  # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
   node = make_node(rule, text[firstPos:pos-1], firstPos, pos, children)
   return (node, pos, nothing)
 end
@@ -213,7 +204,6 @@ function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, po
   end
 
   if length(children) > 0
-    # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
     node = make_node(rule, text[firstPos:pos-1], firstPos, pos, children)
   else
     node = nothing
@@ -236,13 +226,8 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::In
     else
       pos += length(value.match)
       node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [])
-      # node = unref(Node(rule.name, text[firstPos:pos-1], firstPos, pos, [], typeof(rule)))
 
-      # println("....")
-      # tnode = rule.action(node)
-      # println("----")
-
-      return (unref(node), pos, nothing)
+      return (node, pos, nothing)
     end
   else
     return (nothing, firstPos, ParseError("Could not match RegEx", pos))
@@ -254,7 +239,6 @@ function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos:
   firstPos = pos
 
   if child !== nothing
-    # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, [unref(child)], typeof(rule))
     node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [unref(child)])
     return (unref(node), pos, error)
   end
@@ -290,7 +274,6 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int
     return (nothing, pos, ParseError("No match (ListRule)", pos))
   end
 
-  # node = Node(rule.name, text[firstPos:pos-1], firstPos, pos, children, typeof(rule))
   node = make_node(rule, text[firstPos:pos-1], firstPos, pos, children)
   return (node, pos, nothing)
 end
@@ -300,25 +283,5 @@ function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos:
   (_, pos, error) = uncached_parse(grammar, rule.value, text, pos, cache)
   return (nothing, pos, error)
 end
-
-# function uncached_parse(grammar::Grammar, rule::SemanticActionRule, text::String, pos::Int64, cache)
-#   firstPos = pos
-#   (ast, pos, error) = uncached_parse(grammar, rule.rule, text, pos, cache)
-#
-#   if ast !== nothing
-#     # if typeof(rule.action) === Int64
-#     #   child = ast.children[rule.selection]
-#     #   node = Node(ast.name, child.value, child.first, child.last, child.children, child.ruleType)
-#     #   return (node, pos, error)
-#     # elseif typeof(rule.selection) === Function
-#     #   node = rule.selection(ast)
-#     #   return (node, pos, error)
-#     # end
-#     node = rule.action(ast)
-#     return (node, pos, error)
-#   end
-#
-#   return (nothing, pos, error)
-# end
 
 end
