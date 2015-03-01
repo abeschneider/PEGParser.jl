@@ -62,7 +62,11 @@ end
 isleaf(node::Node) = isempty(node.children)
 
 function transform(fn::Function, node::Node)
-  transformed = [transform(fn, child) for child in node.children]
+  if isa(node.children, Array)
+    transformed = [transform(fn, child) for child in node.children]
+  else
+    transformed = transform(fn, node.children)
+  end
 
   if method_exists(fn, (Node, Any, MatchRule{node.sym}))
     label = MatchRule{node.sym}()
