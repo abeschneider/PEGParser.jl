@@ -4,7 +4,7 @@ import Base: show, parse
 
 include("rules.jl")
 
-export parse, ParseError, MatchRule, Node, transform, Grammar, Rule
+export parse, StandardCache, ParseError, MatchRule, Node, transform, Grammar, Rule
 export @grammar
 
 immutable ParseError
@@ -16,7 +16,7 @@ type MatchRule{T} end
 
 abstract ParserCache
 
-type DefaultCache <: ParserCache
+type StandardCache <: ParserCache
   values::Dict{String, Node}
 end
 
@@ -29,6 +29,27 @@ function parse(grammar::Grammar, text::String; cache=nothing, start=:start)
   end
 
   return (ast, pos, error)
+end
+
+function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::Nothing)
+  return uncached_parse(grammar, rule, text, pos, cache)
+end
+
+function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache)
+  cachekey::String = "$(object_id(rule))$pos"
+  if haskey(cache.values, cachekey)
+    cachedresult = cache.values[cachekey]
+    (node, pos, error) = (cachedresult, cachedresult.last, nothing)
+  else
+    (node, pos, error) = uncached_parse(grammar, rule, text, pos, cache)
+
+    # store in cache if we got back a match
+    if node !== nothing
+      cache.values[cachekey] = node
+    end
+  end
+
+  return (node, pos, error)
 end
 
 # default transform is to do nothing
@@ -54,29 +75,8 @@ end
 
 unref{T <: Any}(value::T) = value
 unref{T <: Rule}(node::Node, ::Type{T}) = node
-unref(node::Node, ::Type{ReferencedRule}) = node.children #[1]
+unref(node::Node, ::Type{ReferencedRule}) = node.children
 unref(node::Node) = unref(node, node.ruleType)
-
-function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::Nothing = nothing)
-  return uncached_parse(grammar, rule, text, pos, cache)
-end
-
-function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::DefaultCache)
-  cachekey::String = "$(object_id(rule))$pos"
-  if haskey(cache.values, cachekey)
-    cachedresult = cache.values[cachekey]
-    (node, pos, error) = (cachedresult, cachedresult.last, nothing)
-  else
-    (node, pos, error) = uncached_parse(grammar, rule, text, pos, cache)
-
-    # store in cache if we got back a match
-    if node !== nothing
-      cache.values[cachekey] = node
-    end
-  end
-
-  return (node, pos, error)
-end
 
 function make_node(rule, value, first, last, children)
   return rule.action(rule, value, first, last, children)

@@ -29,16 +29,21 @@ function Node(name::String, value::String, first::Int64, last::Int64, typ)
   return Node(name, value, first, last, [], typ)
 end
 
+function show{T}(io::IO, val::T, indent)
+  println(io, val)
+end
+
 function show(io::IO, node::Node, indent)
   println(io, "node($(node.name)) {$(displayValue(node.value, node.ruleType))$(node.ruleType)}")
-  for (i, child) in enumerate(node.children)
-    print(io, "  "^indent)
-    print(io, "$i: ")
-    if typeof(child) === Node
+  if isa(node.children, Array)
+    for (i, child) in enumerate(node.children)
+      print(io, "  "^indent)
+      print(io, "$i: ")
       show(io, child, indent+1)
-    else
-      println(io, child)
     end
+  else
+    print(io, "  "^(indent+1))
+    show(io, node.children, indent+1)
   end
 end
 
