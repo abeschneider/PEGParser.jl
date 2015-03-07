@@ -33,6 +33,90 @@ The following rules can be used:
 Multiple: `(a+b)^(3, 5)`
 
 ## Example 1
+Let's start by creating a simple calculator that can take two numbers and an operator to give a result.
+
+We first define the grammar:
+```julia
+@grammar calc1 begin
+  start = number + op + number
+  op = plus | minus
+  number = -space + r"[0-9]+"
+  plus = -space + "+"
+  minus = -space + "-"
+  space = r"[ \t\n\r]*"
+end
+```
+
+All grammars by default use `start` as the starting rule. You can specify a different starting rule in the `parse` function if you desire.
+
+The starting rule is composed of two other rules: `number` and `op`. For this calculator, we only allow `+` and `-`. Note, that this could in fact be written more concisely with:
+
+```julia
+op = -space + r"[+-]"
+```
+
+The `number` rule just matches any digit between 0 to 9. You'll note that spaces appear in front of all terminals. This is because PEGs don't handle spaces automatically.
+
+Now we can run this grammar with some input:
+
+```julia
+(ast, pos, error) = parse(calc1, "4+5")
+println(ast)
+```
+
+will result in the following output:
+
+```
+node(start) {AndRule}
+1: node(number) {AndRule}
+  1: node(number.2) {'4',RegexRule}
+2: node(plus) {AndRule}
+  1: node(plus.2) {'+',Terminal}
+3: node(number) {AndRule}
+  1: node(number.2) {'5',RegexRule}
+```
+
+Our input is correctly parsed by our input, but we either have to traverse the tree to get out the result, or use change the output of the parse.
+
+We can change the output of the parse with semantic actions. Every rule already has a semantic action attached to it. Normally it is set to either return a node in the tree or (for the or-rule) give the first child node.
+
+For example, we can change the `number` rule to emit an actual number:
+
+```julia
+number = (-space + r"[0-9]+") { parseint(_1.value) }
+```
+
+The curly-braces after a rule allows either an expression or function to be used as the new action. In this case, the first child (the number, as the space is suppressed), as specified by `_1`, is parsed as an integer.
+
+If we rewrite the grammar fully with actions defined for the rules, we end up with:
+
+```julia
+@grammar calc1 begin
+  start = number + op + number) {
+    apply(eval(_2), _1, _3)
+  }
+
+  op = (plus | minus) { _1 }
+  number = (-space + r"[0-9]+") {parseint(_1.value)}
+  plus = (-space + "+") {symbol(_1.value)}
+  minus = (-space + "-") {symbol(_1.value)}
+  space = r"[ \t\n\r]*"
+end
+
+(ast, pos, error) = parse(calc1, "4+5")
+println(ast)
+```
+
+We now get `9` as an answer. Thus, the parse is also doing the calculation. The code for this can be found in `calc1.jl`, with `calc2.jl` providing a more realistic (and useful) calculator.
+
+In `calc3.jl`, you can find a different approach to this problem. Instead of trying to calculate the answer immediately, the full syntax tree is created. This allows it to be transformed into different forms. In this example, we transform the tree into Julia code:
+
+```julia
+
+```
+
+
+
 Suppose you want a parser that takes input and converts `[text]` into `<b>text<>`. You can write the following grammar:
 
 ```julia

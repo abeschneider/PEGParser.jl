@@ -1,18 +1,17 @@
 using PEGParser
 
 @grammar calc3 begin
-  start = expr { _1 }
+  start = expr #{ _1 }
 
   expr_op = term + op1 + expr
-  expr = (expr_op | term) { _1 }
+  expr = expr_op | term
   term_op = factor + op2 + term
 
-  term = (term_op | factor) { _1 }
-  factor = (number | pfactor) { _1 }
-  pfactor = (-lparen + expr + -rparen) { _1 }
-
-  op1 = (add | sub) { _1 }
-  op2 = (mult | div) { _1 }
+  term = term_op | factor
+  factor = number | pfactor
+  pfactor = (lparen + expr + rparen) { _2 }
+  op1 = add | sub
+  op2 = mult | div
 
   number = (-space + r"[1-9][0-9]*") { parseint(_1.value) }
   add = (-space + "+") { symbol(_1.value) }
@@ -20,10 +19,12 @@ using PEGParser
   mult = (-space + "*") { symbol(_1.value) }
   div = (-space + "/") { symbol(_1.value) }
 
-  lparen = space + "("
-  rparen = space + ")"
+  lparen = (-space + "(") { _1 }
+  rparen = (-space + ")") { _1 }
   space = r"[ \n\r\t]*"
 end
+
+println(calc3.rules[:expr])
 
 data = "4+5*(8+2)"
 (ast, pos, error) = parse(calc3, data)
