@@ -7,18 +7,18 @@ using PEGParser
     apply(eval(_2), _1, _3)
   }
 
-  expr = (expr_op | term) { _1 }
+  expr = expr_op | term
 
   term_op = (factor + op2 + term) {
     apply(eval(_2), _1, _3)
   }
 
-  term = (term_op | factor) { _1 }
-  factor = (number | pfactor) { _1 }
+  term = term_op | factor
+  factor = number | pfactor
   pfactor = (-lparen + expr + -rparen) { _1 }
 
-  op1 = (add | sub) { _1 }
-  op2 = (mult | div) { _1 }
+  op1 = add | sub
+  op2 = mult | div
 
   number = (-space + r"[1-9][0-9]*") { parseint(_1.value) }
   add = (-space + "+") { symbol(_1.value) }

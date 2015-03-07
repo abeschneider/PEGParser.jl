@@ -5,7 +5,7 @@ using PEGParser
     apply(eval(_2), _1, _3)
   }
 
-  op = (plus | minus) { _1 }
+  op = plus | minus
   number = (-space + r"[0-9]+") {parseint(_1.value)}
   plus = (-space + "+") {symbol(_1.value)}
   minus = (-space + "-") {symbol(_1.value)}
