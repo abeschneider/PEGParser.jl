@@ -1,7 +1,7 @@
 using PEGParser
 
 @grammar calc3 begin
-  start = expr { _1 }
+  start = expr
 
   expr_op = term + op1 + expr
   expr = expr_op | term

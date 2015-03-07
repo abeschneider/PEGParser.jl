@@ -78,30 +78,8 @@ function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
     rcode = quote
       rules[$name] = $(esc(rule))
 
-      # if $(esc(action_type)) === Function
-        # rules[$name].action = $rule_action
-        # println("action = ", rules[$name].action)
-        # rules[$name].action = (rule, value, first, last, children) -> begin
-        #   $(rule_action)(rule, value, first, last, children)
-        # end
       if $(esc(action_type)) !== Function
-        # want to parse rule_action to convert '_i' to
-        # children[i]
-        # rule_action = expand_names(esc(rule_action))
-
         rules[$name].action = (rule, value, first, last, children) -> begin
-          # if isa(children, Array)
-          #   for (i, child) in enumerate(children)
-          #     #eval(Expr(:(=), symbol("_$i"), child))
-          #     var = symbol("_$i")
-          #     # dump(:($var = $child))
-          #     # println(Expr(:(=), Expr(:string, "_", i), :child))
-          #     $(Expr(:(=), Expr(:symbol, Expr(:string, "_", :i)), :child))
-          #     # $(:($var = child))
-          #     # assign = Expr(:(=), symbol("_$i"), child)
-          #   end
-          # end
-
           return $(rule_action)
         end
       end
