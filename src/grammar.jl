@@ -47,7 +47,13 @@ expand_names(value) = value
 function expand_names(sym::Symbol)
   m = match(r"_(\d+)", string(sym))
   if m !== nothing
-    return :(children[parseint($(m.captures[1]))])
+    i = parseint(m.captures[1])
+
+    if i == 0
+      return :(value)
+    else
+      return :(children[$i])
+    end
   end
   return sym
 end

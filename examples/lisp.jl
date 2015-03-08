@@ -1,15 +1,15 @@
 using PEGParser
 
 @grammar lispgrammar begin
-  start = (+(cell))[1]
-  expr = (lst | atom)[(ast) -> ast.children[1]]
-  cell = (-space + list(expr, space))[1]
-  lst = (-lparen + +(cell) + -rparen)[1]
-  atom = (boolean | integer | string | symbol)[(ast) -> ast.children[1]]
-  boolean = "#t" | "#f"
-  integer = r"[1-9][0-9]*"
-  string = -dquote + r"[^\"]*" + -dquote
-  symbol = r"[^() ]+"
+  start = cell
+  expr = lst | atom
+  cell = list(expr, space)
+  lst = (lparen + +(cell) + rparen) { _2.children }
+  atom = boolean | integer | string | sym
+  boolean = ("#t" | "#f") { _1 == "#t" ? true : false }
+  integer = r"[1-9][0-9]*" { parseint(_0) }
+  string = (dquote + r"[^\"]*" + dquote) { _2.value }
+  sym = r"[^() ]+" { symbol(_0) }
 
   dquote = "\""
   lparen = "("
@@ -17,22 +17,20 @@ using PEGParser
   space = r"[ \n\r\t]*"
 end
 
-toexpr(node, cvalues, ::MatchRule{:default}) = cvalues
-toexpr(node, cvalues, ::MatchRule{:boolean}) = node.value == "#t" ? true : false
-toexpr(node, cvalues, ::MatchRule{:integer}) = parseint(node.value)
-toexpr(node, cvalues, ::MatchRule{:string}) = node.value[2:end-1]
-toexpr(node, cvalues, ::MatchRule{:symbol}) = symbol(node.value)
+toexpr(node, cvalues, ::MatchRule{:start}) = cvalues
 
-function toexpr(node, cvalues, ::MatchRule{:lst})
-  cvalues = cvalues[1]
-  return Expr(:call, cvalues...)
+function toexpr(node, cvalues, ::MatchRule{:cell})
+  if length(cvalues) > 1
+    return Expr(:call, cvalues...)
+  else
+    return cvalues[1]
+  end
 end
 
 data = "(println \"test: \" (* 10 (- 5 6)))"
 (ast, pos, error) = parse(lispgrammar, data)
 println(ast)
 code = transform(toexpr, ast)
-println("code = $(code)")
-for line in code
-  eval(line)
-end
+dump(code)
+println("code: $(code)")
+eval(code)
