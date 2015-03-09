@@ -94,15 +94,15 @@ If we rewrite the grammar fully with actions defined for the rules, we end up wi
 
 ```julia
 @grammar calc1 begin
-start = (number + op + number) {
-  apply(eval(_2), _1, _3)
-}
+  start = (number + op + number) {
+    apply(eval(_2), _1, _3)
+  }
 
-op = plus | minus
-number = (-space + r"[0-9]+") {parseint(_1.value)}
-plus = (-space + "+") {symbol(_1.value)}
-minus = (-space + "-") {symbol(_1.value)}
-space = r"[ \t\n\r]*"
+  op = plus | minus
+  number = (-space + r"[0-9]+") {parseint(_1.value)}
+  plus = (-space + "+") {symbol(_1.value)}
+  minus = (-space + "-") {symbol(_1.value)}
+  space = r"[ \t\n\r]*"
 end
 
 data = "4+5"
