@@ -16,7 +16,18 @@ type ParserData
   parsers
 
   # built up list of actions to resolve
-  resolution_list
+  # resolution_list
+end
+
+function parseDefinition(name::String, sym::Symbol, pdata::ParserData)
+  fn = get(pdata.parsers, sym, nothing)
+
+  if fn !== nothing
+    return fn(name, pdata, nothing)
+  end
+
+  # if not found, just return the symbol
+  return sym
 end
 
 function parseDefinition(name::String, expr::Expr, pdata::ParserData)
@@ -33,7 +44,7 @@ function parseDefinition(name::String, expr::Expr, pdata::ParserData)
 
   fn = get(pdata.parsers, expr.args[1], nothing)
 
-  if fn !== Nothing
+  if fn !== nothing
     return fn(name, pdata, expr.args[2:end])
   end
 
@@ -75,6 +86,7 @@ function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
 
     rule = parseDefinition(name, definition.args[2], pdata)
     action_type = typeof(rule.action)
+
     if action_type !== Function
       rule_action = expand_names(rule.action)
     else

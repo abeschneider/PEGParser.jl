@@ -13,7 +13,9 @@ using PEGParser
   op1 = add | sub
   op2 = mult | div
 
-  number = (-space + r"[1-9][0-9]*") { parseint(_1.value) }
+  number = float_value | int_value
+  int_value = (-space + integer) { parseint(_1.value) }
+  float_value = (-space + float) { parsefloat(_1.value) }
   add = (-space + "+") { symbol(_1.value) }
   sub = (-space + "-") { symbol(_1.value) }
   mult = (-space + "*") { symbol(_1.value) }
@@ -26,7 +28,7 @@ end
 
 println(calc3.rules[:expr])
 
-data = "4+5*(8+2)"
+data = "3.145+5*(6-4e2)"
 (ast, pos, error) = parse(calc3, data)
 println(ast)
 

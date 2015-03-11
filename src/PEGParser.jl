@@ -218,7 +218,7 @@ function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, po
 end
 
 function uncached_parse(grammar::Grammar, rule::RegexRule, text::String, pos::Int64, cache)
-  firstPos = pos;
+  firstPos = pos
 
   # use regex match
   if ismatch(rule.value, text[firstPos:end])
@@ -287,6 +287,32 @@ function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos:
   # use rule contained in the SuppressRule to parse, but don't return anything
   (_, pos, error) = uncached_parse(grammar, rule.value, text, pos, cache)
   return (nothing, pos, error)
+end
+
+function uncached_parse(grammar::Grammar, rule::IntegerRule, text::String, pos::Int64, cache)
+  if ismatch(r"[-+]?[0-9]+([eE][-+]?[0-9]+)?", text[pos:end])
+    value = match(r"[-+]?[0-9]+([eE][-+]?[0-9]+)?", text[pos:end])
+
+    if length(value.match) != 0
+      node = make_node(rule, value.match, pos, pos+length(value.match), [])
+      return (node, pos+length(value.match), nothing)
+    end
+  end
+
+  return (nothing, pos, ParseError("No match (IntegerRule)", pos))
+end
+
+function uncached_parse(grammar::Grammar, rule::FloatRule, text::String, pos::Int64, cache)
+  if ismatch(r"[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?", text[pos:end])
+    value = match(r"[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?", text[pos:end])
+
+    if length(value.match) != 0
+      node = make_node(rule, value.match, pos, pos+length(value.match), [])
+      return (node, pos+length(value.match), nothing)
+    end
+  end
+
+  return (nothing, pos, ParseError("No match (FloatRule)", pos))
 end
 
 end
