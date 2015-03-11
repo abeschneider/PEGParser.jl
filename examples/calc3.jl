@@ -13,9 +13,10 @@ using PEGParser
   op1 = add | sub
   op2 = mult | div
 
-  number = float_value | int_value
-  int_value = (-space + integer) { parseint(_1.value) }
-  float_value = (-space + float) { parsefloat(_1.value) }
+  number = (-space + float) { parsefloat(_1.value) } | (-space + integer) { parseint(_1.value) } 
+  # number = float_value | int_value
+  # int_value = (-space + integer) { parseint(_1.value) }
+  # float_value = (-space + float) { parsefloat(_1.value) }
   add = (-space + "+") { symbol(_1.value) }
   sub = (-space + "-") { symbol(_1.value) }
   mult = (-space + "*") { symbol(_1.value) }
