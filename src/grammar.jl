@@ -4,6 +4,9 @@ import Base.getindex
 
 abstract Rule
 
+# by default no children
+children(rule::Rule) = []
+
 type Grammar
   rules::Dict{Symbol, Rule}
 end
@@ -39,6 +42,8 @@ function parseDefinition(name::String, expr::Expr, pdata::ParserData)
   if expr.head === :curly
     rule = parseDefinition(name, expr.args[1], pdata)
     rule.action = expr.args[2]
+
+    println("rule = $(rule.name), $(rule.action)")
     return rule
   end
 
@@ -76,6 +81,19 @@ function expand_names(expr::Expr)
   return Expr(expr.head, new_args...)
 end
 
+function make_function(prule)
+  if typeof(prule.action) != Function
+    action = expand_names(prule.action)
+    prule.action = (rule, value, first, last, children) -> begin
+      action
+    end
+  end
+
+  for child in children(prule)
+    make_function(child)
+  end
+end
+
 function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
   code = {}
   push!(code, :(rules = Dict()))
@@ -96,13 +114,22 @@ function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
     rcode = quote
       rules[$name] = $(esc(rule))
 
-      if $(esc(action_type)) !== Function
-        rules[$name].action = (rule, value, first, last, children) -> begin
-          return $(rule_action)
-        end
+      # if $(esc(action_type)) !== Function
+      #   rules[$name].action = (rule, value, first, last, children) -> begin
+      #     return $(rule_action)
+      #   end
+      # end
+
+      # per rule, go through each child and deal with action
+      # will have to create a method to interogate rules for children
+      # .. may want something like 'children() -> Array' .. if no children,
+      # can return 'nothing'.
+      for (_, rule) in rules
+        make_function(rule)
       end
     end
 
+    println(rcode)
     push!(code, rcode)
   end
 
