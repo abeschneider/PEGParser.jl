@@ -291,29 +291,43 @@ function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos:
 end
 
 function uncached_parse(grammar::Grammar, rule::IntegerRule, text::String, pos::Int64, cache)
-  if ismatch(r"[-+]?[0-9]+([eE][-+]?[0-9]+)?", text[pos:end])
-    value = match(r"[-+]?[0-9]+([eE][-+]?[0-9]+)?", text[pos:end])
+  #rexpr = r"^[-+]?[0-9]+([eE][-+]?[0-9]+)?"
+  # Julia treats anything with 'e' to be a float, so for now follow suit
+  rexpr = r"^[-+]?[0-9]+"
+  firstPos = pos
+
+  # use regex match
+  if ismatch(rexpr, text[firstPos:end])
+    value = match(rexpr, text[firstPos:end])
 
     if length(value.match) != 0
-      node = make_node(rule, value.match, pos, pos+length(value.match), [])
-      return (node, pos+length(value.match), nothing)
-    end
-  end
+      pos += length(value.match)
+      node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [])
 
-  return (nothing, pos, ParseError("No match (IntegerRule)", pos))
+      return (node, pos, nothing)
+    end
+  else
+    return (nothing, firstPos, ParseError("Could not match IntegerRule", pos))
+  end
 end
 
 function uncached_parse(grammar::Grammar, rule::FloatRule, text::String, pos::Int64, cache)
-  if ismatch(r"[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?", text[pos:end])
-    value = match(r"[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?", text[pos:end])
+  rexpr = r"^[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?"
+  firstPos = pos
+
+  # use regex match
+  if ismatch(rexpr, text[firstPos:end])
+    value = match(rexpr, text[firstPos:end])
 
     if length(value.match) != 0
-      node = make_node(rule, value.match, pos, pos+length(value.match), [])
-      return (node, pos+length(value.match), nothing)
-    end
-  end
+      pos += length(value.match)
+      node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [])
 
-  return (nothing, pos, ParseError("No match (FloatRule)", pos))
+      return (node, pos, nothing)
+    end
+  else
+    return (nothing, firstPos, ParseError("Could not match FloatRule", pos))
+  end
 end
 
 end

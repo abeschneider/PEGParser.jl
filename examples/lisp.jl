@@ -5,9 +5,9 @@ using PEGParser
   expr = lst | atom
   cell = list(expr, space)
   lst = (lparen + +(cell) + rparen) { _2.children }
-  atom = boolean | integer | string | sym
+  atom = string | boolean | number | sym
   boolean = ("#t" | "#f") { _1 == "#t" ? true : false }
-  integer = r"[1-9][0-9]*" { parseint(_0) }
+  number = (-space + float) { parsefloat(_1.value) } | (-space + integer) { parseint(_1.value) }
   string = (dquote + r"[^\"]*" + dquote) { _2.value }
   sym = r"[^() ]+" { symbol(_0) }
 
