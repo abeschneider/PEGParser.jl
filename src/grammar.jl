@@ -5,7 +5,7 @@ import Base.getindex
 abstract Rule
 
 # by default no children
-children(rule::Rule) = []
+get_children(rule::Rule) = []
 
 type Grammar
   rules::Dict{Symbol, Rule}
@@ -19,7 +19,9 @@ type ParserData
   parsers
 
   # built up list of actions to resolve
-  # resolution_list
+  rules::Array{Rule, 1}
+
+  ParserData(parsers) = new(parsers, [])
 end
 
 function parseDefinition(name::String, sym::Symbol, pdata::ParserData)
@@ -33,27 +35,32 @@ function parseDefinition(name::String, sym::Symbol, pdata::ParserData)
   return sym
 end
 
+insert_action_expr(fn_expr) = @eval (rule, value, first, last, children) -> $fn_expr
+
+# FIXME: There is a weird mismatch in the parsers and parseDefinition..
+# should they really be different? if not, parseDefinition might need
+# to be changed to allow for arrays to be passed in
 function parseDefinition(name::String, expr::Expr, pdata::ParserData)
+  rule = EmptyRule()
+
   # if it's a macro (e.g. r"regex", then we want to expand it first)
   if expr.head === :macrocall
-    return parseDefinition(name, eval(expr), pdata)
-  end
-
-  if expr.head === :curly
+    # FIXME: using an evil eval
+    rule = parseDefinition(name, eval(expr), pdata)
+  elseif expr.head === :curly
     rule = parseDefinition(name, expr.args[1], pdata)
-    rule.action = expr.args[2]
+    action_expr = expand_names(expr.args[2])
+    rule.action = insert_action_expr(action_expr)
+  else
+    fn = get(pdata.parsers, expr.args[1], nothing)
 
-    println("rule = $(rule.name), $(rule.action)")
-    return rule
+    if fn !== nothing
+      rule = fn(name, pdata, expr.args[2:end])
+    end
   end
 
-  fn = get(pdata.parsers, expr.args[1], nothing)
-
-  if fn !== nothing
-    return fn(name, pdata, expr.args[2:end])
-  end
-
-  return (EmptyRule(), nothing)
+  push!(pdata.rules, rule)
+  return rule
 end
 
 # general case, just return value
@@ -81,18 +88,25 @@ function expand_names(expr::Expr)
   return Expr(expr.head, new_args...)
 end
 
-function make_function(prule)
-  if typeof(prule.action) != Function
-    action = expand_names(prule.action)
-    prule.action = (rule, value, first, last, children) -> begin
-      action
-    end
-  end
-
-  for child in children(prule)
-    make_function(child)
-  end
-end
+# function make_function_assignment(rule, action)
+#   # ref = Expr(:ref, :rules, rule)
+#   dot = Expr(:(.), rule, Meta.quot(:action))
+#   return Expr(:(=), dot, action)
+# end
+#
+# function make_function(rule, action::Symbol)
+#   return make_function_assignment(rule, action)
+# end
+#
+# function make_function(rule, action::Expr)
+#   action = expand_names(rule.action)
+#
+#   args = Expr(:tuple, :rule, :value, :first, :last, :children)
+#   block = Expr(:block, action)
+#   fn = Expr(:(->), args, block)
+#
+#   return make_function_assignment(rule, fn)
+# end
 
 function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
   code = {}
@@ -103,34 +117,7 @@ function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
     ref_by_name = Expr(:ref, :rules, name)
 
     rule = parseDefinition(name, definition.args[2], pdata)
-    action_type = typeof(rule.action)
-
-    if action_type !== Function
-      rule_action = expand_names(rule.action)
-    else
-      rule_action = rule.action
-    end
-
-    rcode = quote
-      rules[$name] = $(esc(rule))
-
-      # if $(esc(action_type)) !== Function
-      #   rules[$name].action = (rule, value, first, last, children) -> begin
-      #     return $(rule_action)
-      #   end
-      # end
-
-      # per rule, go through each child and deal with action
-      # will have to create a method to interogate rules for children
-      # .. may want something like 'children() -> Array' .. if no children,
-      # can return 'nothing'.
-      for (_, rule) in rules
-        make_function(rule)
-      end
-    end
-
-    println(rcode)
-    push!(code, rcode)
+    push!(code, :(rules[$name] = $(esc(rule))))
   end
 
   push!(code, :($(esc(grammar_name)) = Grammar(rules)))

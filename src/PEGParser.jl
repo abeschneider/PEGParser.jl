@@ -84,7 +84,8 @@ unref(node::Node, ::Type{ReferencedRule}) = node.children
 unref(node::Node) = unref(node, node.ruleType)
 
 function make_node(rule, value, first, last, children)
-  return rule.action(rule, value, first, last, children)
+  result = rule.action(rule, value, first, last, children)
+  return result
 end
 
 function uncached_parse(grammar::Grammar, rule::ReferencedRule, text::String, pos::Int64, cache)

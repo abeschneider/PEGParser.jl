@@ -30,7 +30,7 @@ function Node(name::String, value::String, first::Int64, last::Int64, typ)
 end
 
 function show{T}(io::IO, val::T, indent)
-  println(io, val)
+  println(io, "$val ($(typeof(val)))")
 end
 
 function show(io::IO, node::Node, indent)
