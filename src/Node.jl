@@ -20,7 +20,6 @@ immutable Node
       sym = symbol(name)
     end
 
-    # println("creating node: $name, value: $value, children: $children")
     return new(name, value, first, last, children, ruleType, sym)
   end
 end

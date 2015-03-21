@@ -24,9 +24,7 @@ using PEGParser
   space = r"[ \n\r\t]*"
 end
 
-# println(calc3.rules)
-
-data = "3.145+5*(6-4)"
+data = "3.145+5*(6-4.0)"
 (ast, pos, error) = parse(calc3, data)
 println(ast)
 

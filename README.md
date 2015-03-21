@@ -112,6 +112,8 @@ println(ast)
 
 We now get `9` as an answer. Thus, the parse is also doing the calculation. The code for this can be found in `calc1.jl`, with `calc2.jl` providing a more realistic (and useful) calculator.
 
+## Example 2
+
 In `calc3.jl`, you can find a different approach to this problem. Instead of trying to calculate the answer immediately, the full syntax tree is created. This allows it to be transformed into different forms. In this example, we transform the tree into Julia code:
 
 ```julia
@@ -128,7 +130,7 @@ In `calc3.jl`, you can find a different approach to this problem. Instead of try
   op1 = add | sub
   op2 = mult | div
 
-  number = (-space + r"[1-9][0-9]*") { parseint(_1.value) }
+  number = (-space + float) { parsefloat(_1.value) } | (-space + integer) { parseint(_1.value) }
   add = (-space + "+") { symbol(_1.value) }
   sub = (-space + "-") { symbol(_1.value) }
   mult = (-space + "*") { symbol(_1.value) }
@@ -140,7 +142,31 @@ In `calc3.jl`, you can find a different approach to this problem. Instead of try
 end
 ```
 
-provides the grammar, and then we define the transforms:
+You will also notice that instead of trying to define `integer` and `float` manually, we are now using pre-defined parsers. Custom parsers can be defined to both make defining new grammars easier as well as add new types of functionality (e.g. maintaining symbol tables).
+
+The grammar is now ready to be used to parse strings:
+
+```julia
+(ast, pos, error) = parse(calc3, "3.145+5*(6-4.0)")
+```
+
+which results in the following AST:
+
+```
+node(start) {ReferencedRule}
+  node(expr_op) {AndRule}
+  1: 3.145 (Float64)
+  2: + (Symbol)
+  3: node(term_op) {AndRule}
+    1: 5 (Int64)
+    2: * (Symbol)
+    3: node(expr_op) {AndRule}
+      1: 6 (Int64)
+      2: - (Symbol)
+      3: 400.0 (Float64)
+```
+
+Now that we have an AST, we can create transforms to convert the AST into Julia code:
 
 ```julia
 toexpr(node, cnodes, ::MatchRule{:default}) = cnodes
@@ -148,13 +174,32 @@ toexpr(node, cnodes, ::MatchRule{:term_op}) = Expr(:call, cnodes[2], cnodes[1], 
 toexpr(node, cnodes, ::MatchRule{:expr_op}) = Expr(:call, cnodes[2], cnodes[1], cnodes[3])
 ```
 
-which when applied to the parse tree, results in a Julia AST:
+and to use the transforms:
 
 ```julia
-(ast, pos, error) = parse(calc3, "4+5*(8+2)")
 code = transform(toexpr, ast)
 ```
 
+to generate the Expr:
+
+```
+Expr
+  head: Symbol call
+  args: Array(Any,(3,))
+    1: Symbol +
+    2: Float64 3.145
+    3: Expr
+      head: Symbol call
+      args: Array(Any,(3,))
+        1: Symbol *
+        2: Int64 5
+        3: Expr
+        head: Symbol call
+        args: Array(Any,(3,))
+        typ: Any
+      typ: Any
+  typ: Any
+```
 
 ## Caveats
 

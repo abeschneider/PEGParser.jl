@@ -88,26 +88,6 @@ function expand_names(expr::Expr)
   return Expr(expr.head, new_args...)
 end
 
-# function make_function_assignment(rule, action)
-#   # ref = Expr(:ref, :rules, rule)
-#   dot = Expr(:(.), rule, Meta.quot(:action))
-#   return Expr(:(=), dot, action)
-# end
-#
-# function make_function(rule, action::Symbol)
-#   return make_function_assignment(rule, action)
-# end
-#
-# function make_function(rule, action::Expr)
-#   action = expand_names(rule.action)
-#
-#   args = Expr(:tuple, :rule, :value, :first, :last, :children)
-#   block = Expr(:block, action)
-#   fn = Expr(:(->), args, block)
-#
-#   return make_function_assignment(rule, fn)
-# end
-
 function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
   code = {}
   push!(code, :(rules = Dict()))
