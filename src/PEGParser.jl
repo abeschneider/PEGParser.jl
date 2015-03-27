@@ -19,6 +19,10 @@ abstract ParserCache
 
 type StandardCache <: ParserCache
   values::Dict{String, Node}
+
+  function StandardCache()
+    return new(Dict{String, Any}())
+  end
 end
 
 function parse(grammar::Grammar, text::String; cache=nothing, start=:start)
@@ -36,7 +40,7 @@ function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::No
   return uncached_parse(grammar, rule, text, pos, cache)
 end
 
-function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache)
+function parse(grammar::Grammar, rule::Rule, text::String, pos::Int64, cache::StandardCache)
   cachekey::String = "$(object_id(rule))$pos"
   if haskey(cache.values, cachekey)
     cachedresult = cache.values[cachekey]
