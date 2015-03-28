@@ -371,7 +371,6 @@ function test_list_ncache()
 
   (ast, pos, error) = parse(grammar, "")
   @test error !== nothing
-  # @test ast.value == "1,2,3"
 end
 
 function test_list0_ncache()
@@ -387,6 +386,46 @@ function test_list0_ncache()
   (ast, pos, error) = parse(grammar, "")
   @test error === nothing
   @test length(ast.children) == 0
+end
+
+function test_integer_parser()
+  @grammar grammar begin
+    start = integer
+  end
+
+  (ast, pos, error) = parse(grammar, "5")
+  @test error === nothing
+  @test ast.ruleType === IntegerRule
+  @test ast.value == "5"
+end
+
+function test_float_parser()
+  @grammar grammar begin
+    start = float
+  end
+
+  (ast, pos, error) = parse(grammar, "5.123")
+  @test error === nothing
+  @test ast.ruleType === FloatRule
+  @test ast.value == "5.123"
+end
+
+function test_semantic_action()
+  @grammar grammar begin
+    start = list(number, COMMA)
+    number = (-SPACE + float) { parsefloat(_1.value) } |
+             (-SPACE + integer) { parseint(_1.value) }
+    COMMA = SPACE + ","
+    SPACE = r"[ \t\n]*"
+  end
+
+  (ast, pos, error) = parse(grammar, "1,2.0,3,4.5")
+  @test error === nothing
+  @test length(ast.children) == 4
+  @test ast.children[1] == 1
+  @test ast.children[2] == 2.0
+  @test ast.children[3] == 3
+  @test ast.children[4] == 4.5
 end
 
 test_string1_ncache()
@@ -413,3 +452,7 @@ test_ambigious_ncache()
 test_ambigious_cache()
 test_list_ncache()
 test_list0_ncache()
+
+test_integer_parser()
+test_float_parser()
+test_semantic_action()
