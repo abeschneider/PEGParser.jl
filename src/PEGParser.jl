@@ -5,9 +5,11 @@ import Base: show, parse
 include("rules.jl")
 
 export parse, StandardCache, ParseError, MatchRule, Node, transform, Grammar, Rule
-export @grammar
+export @grammar, @set_parsers
 export no_action, or_default_action
-export IntegerRule, FloatRule
+export ParserData, IntegerRule, FloatRule
+export map_symbol_to_function
+export ?, list, parseGrammar, parseDefinition
 
 immutable ParseError
   msg::String

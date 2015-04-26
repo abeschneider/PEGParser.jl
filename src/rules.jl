@@ -349,26 +349,10 @@ function float(name::String, pdata::ParserData, args::Array)
   return FloatRule(name)
 end
 
-macro grammar(name::Symbol, args...)
+macro grammar(name, definitions)
   parsers = [:+, :*, :?, :|, :-, :^, :list, :integer, :float]
-
-  if length(args) == 1
-    expr = args[1]
-  elseif length(args) == 2
-    # FIXME: can't eval here .. need to figure out how to add this code to
-    # the generated macro code
-    append!(parsers, eval(args[1]))
-    expr = args[2]
-  else
-    # FIXME: make an exception
-    println("error")
-  end
-
   mapped_parsers = map_symbol_to_function(parsers)
-  pdata = ParserData(mapped_parsers)
-  value = parseGrammar(name, expr, pdata)
-
-  return value
+  return parseGrammar(name, definitions, ParserData(mapped_parsers))
 end
 
 # by default don't show anything

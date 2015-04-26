@@ -18,10 +18,7 @@ type ParserData
   # map of parsers to use
   parsers
 
-  # built up list of actions to resolve
-  rules::Array{Rule, 1}
-
-  ParserData(parsers) = new(parsers, [])
+  ParserData(parsers) = new(parsers)
 end
 
 function parseDefinition(name::String, sym::Symbol, pdata::ParserData)
@@ -69,14 +66,13 @@ function parseDefinition(name::String, expr::Expr, pdata::ParserData)
     rule = parseDefinition(name, expr.args[1], pdata)
     rule.action = expand_names(expr.args[2])
   else
-    fn = get(pdata.parsers, expr.args[1], nothing)
+    parser = get(pdata.parsers, expr.args[1], nothing)
 
-    if fn !== nothing
-      rule = fn(name, pdata, expr.args[2:end])
+    if parser !== nothing
+      rule = parser(name, pdata, expr.args[2:end])
     end
   end
 
-  push!(pdata.rules, rule)
   return rule
 end
 
