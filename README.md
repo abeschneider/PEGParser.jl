@@ -1,5 +1,6 @@
-# PEGParser
+[![Build Status](https://travis-ci.org/abeschneider/PEGParser.jl.svg?branch=v0.1.0)](https://travis-ci.org/abeschneider/PEGParser.jl)
 
+# PEGParser
 
 PEGParser is a PEG Parser for Julia with Packrat capabilties. PEGParser was inspired by pyparsing, parsimonious, boost::spirit, as well as several others.
 ## Defining a grammar
