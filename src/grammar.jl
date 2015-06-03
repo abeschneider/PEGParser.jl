@@ -36,10 +36,11 @@ end
 expand_names(value) = value
 
 # if it's a symbol, check that it matches, and if so, convert it
-function expand_names(sym::Symbol)
+function expand_names(sym::Symbol)  
   m = match(r"_(\d+)", string(sym))
   if m !== nothing
     i = parseint(m.captures[1])
+
     return i == 0 ? :(value) : :(children[$i])
   end
   return sym

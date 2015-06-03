@@ -44,12 +44,13 @@ macro grammar(name, definitions)
 end
 
 @grammar custom begin
-  start = repeated("abc")
+  start = repeated("abc") + -SPACE + integer
+  SPACE = r"[ \t\n]+"
 end
 
-data = "abcabcabc"
+data = "abcabcabc 3"
 (ast, pos, error) = parse(custom, data)
 
 # value of our new rule should evaluate to the number of times we
 # saw a repeat of the given text
-@assert ast == 3
+@assert int(ast.children[1]) == int(ast.children[2].value)

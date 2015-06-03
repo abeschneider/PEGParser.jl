@@ -5,7 +5,7 @@ immutable Node
   value::String
   first::Int64
   last::Int64
-  children #::Array{Node}
+  children::Array #::Array{Node}
   ruleType::Type
   sym::Any
 
@@ -13,7 +13,7 @@ immutable Node
     return new(node.name, node.value, node.first, node.last, node.children, node.ruleType, node.sym)
   end
 
-  function Node(name::String, value::String, first::Int64, last::Int64, children, ruleType::Type)
+  function Node(name::String, value::String, first::Int64, last::Int64, children::Array, ruleType::Type)
     if length(name) == 0
       sym = nothing
     else

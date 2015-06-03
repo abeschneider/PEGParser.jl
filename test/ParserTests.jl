@@ -1,4 +1,3 @@
-# using RunTests
 using Base.Test
 
 using PEGParser

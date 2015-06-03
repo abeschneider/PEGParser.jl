@@ -316,13 +316,24 @@ function list(name::String, pdata::ParserData, args::Array)
   return ListRule(name, entry, delim)
 end
 
-function map_symbol_to_function(lst)
-  m = Dict{Symbol, Function}()
-  for sym in lst
-    m[sym] = eval(sym)
-  end
+# Not
+type NotRule <: Rule
+  name
+  entry
+  action
 
-  return m
+  function NotRule(name::String, entry::Rule)
+    return new(name, entry, no_action)
+  end
+end
+
+function !(name::String, pdata::ParserData, args::Array)
+  entry = parseDefinition("$(name)_entry", args[1], pdata)
+  return NotRule(name, entry)
+end
+
+function show(io::IO, rule::NotRule)
+  print(io, "!($(rule.entry))");
 end
 
 
@@ -350,7 +361,7 @@ function float(name::String, pdata::ParserData, args::Array)
 end
 
 macro grammar(name, definitions)
-  parsers = [:+, :*, :?, :|, :-, :^, :list, :integer, :float]
+  parsers = [:+, :*, :?, :|, :-, :^, :!, :list, :integer, :float]
   mapped_parsers = map_symbol_to_function(parsers)
   return parseGrammar(name, definitions, ParserData(mapped_parsers))
 end
@@ -361,3 +372,13 @@ displayValue{T <: Rule}(value, ::Type{T}) = ""
 # except for terminals and regex
 displayValue(value, ::Type{Terminal}) = "'$value',"
 displayValue(value, ::Type{RegexRule}) = "'$value',"
+
+
+function map_symbol_to_function(lst)
+  m = Dict{Symbol, Function}()
+  for sym in lst
+    m[sym] = eval(sym)
+  end
+
+  return m
+end

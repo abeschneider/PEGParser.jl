@@ -9,7 +9,7 @@ export @grammar, @set_parsers
 export no_action, or_default_action
 export ParserData, IntegerRule, FloatRule
 export map_symbol_to_function
-export ?, list, parseGrammar, parseDefinition
+export ?, list, parseGrammar, parseDefinition, integer, float
 
 immutable ParseError
   msg::String
@@ -87,10 +87,11 @@ end
 
 unref{T <: Any}(value::T) = value
 unref{T <: Rule}(node::Node, ::Type{T}) = node
-unref(node::Node, ::Type{ReferencedRule}) = node.children
+unref(node::Node, ::Type{ReferencedRule}) = node.children[1]
 unref(node::Node) = unref(node, node.ruleType)
 
-function make_node(rule, value, first, last, children)
+function make_node(rule, value, first, last, children::Array)
+  # println("rule.action = ", rule.action, rule, value)
   result = rule.action(rule, value, first, last, children)
   return result
 end
@@ -102,7 +103,7 @@ function uncached_parse(grammar::Grammar, rule::ReferencedRule, text::String, po
   (childNode, pos, error) = parse(grammar, refrule, text, pos, cache)
 
   if childNode !== nothing
-    node = make_node(rule, text[firstPos:pos-1], firstPos, pos, childNode)
+    node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [childNode])
     return (node, pos, error)
   else
     return (nothing, pos, error)
@@ -294,6 +295,21 @@ end
 function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos::Int64, cache)
   # use rule contained in the SuppressRule to parse, but don't return anything
   (_, pos, error) = uncached_parse(grammar, rule.value, text, pos, cache)
+  return (nothing, pos, error)
+end
+
+function uncached_parse(grammar::Grammar, rule::NotRule, text::String, pos::Int64, cache)
+  # try to parse rule
+  (child, newpos, error) = parse(grammar, rule.entry, text, pos, cache)
+
+  # if we match, it's an error
+  if error == nothing
+    error = ParseError("No match (NotRule)", pos)
+  else
+    # otherwise, return a success
+    error = nothing
+  end
+
   return (nothing, pos, error)
 end
 

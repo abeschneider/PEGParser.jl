@@ -1,13 +1,10 @@
-using RunTests
 using Base.Test
 
 using PEGParser
 
-# FIXME: Error "MatchRule not defined" occurs when @testmodule is used
-# @testmodule TransformTests begin
 function test_simple1()
   @grammar grammar begin
-    start = list_content
+    start = list_content { _1 }
     list_content = (list_label + list_values) { _2 }
     list_values = list(content, "," + space)
     space = r"[ \t]+"
@@ -23,6 +20,5 @@ function test_simple1()
   result = transform(tolist, ast)
   @test result == {"a","b","c"}
 end
-# end
 
 test_simple1()

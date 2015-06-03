@@ -2,7 +2,7 @@ using PEGParser
 
 @grammar calc1 begin
   start = (number + op + number) {
-    apply(eval(_2), _1, _3)
+  	apply(eval(_2), _1, _3)
   }
 
   op = plus | minus

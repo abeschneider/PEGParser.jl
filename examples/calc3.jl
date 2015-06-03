@@ -1,7 +1,7 @@
 using PEGParser
 
 @grammar calc3 begin
-  start = expr
+  start = expr { _1 }
 
   expr_op = term + op1 + expr
   expr = expr_op | term
@@ -13,7 +13,9 @@ using PEGParser
   op1 = add | sub
   op2 = mult | div
 
-  number = (-space + float) { parsefloat(_1.value) } | (-space + integer) { parseint(_1.value) }
+  number = (-space + float) { parsefloat(_1.value) } | (-space + integer) { 
+    parseint(_1.value) 
+  }
   add = (-space + "+") { symbol(_1.value) }
   sub = (-space + "-") { symbol(_1.value) }
   mult = (-space + "*") { symbol(_1.value) }

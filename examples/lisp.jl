@@ -1,7 +1,7 @@
 using PEGParser
 
 @grammar lispgrammar begin
-  start = cell
+  start = cell { _1 }
   expr = lst | atom
   cell = list(expr, space)
   lst = (lparen + +(cell) + rparen) { _2.children }
