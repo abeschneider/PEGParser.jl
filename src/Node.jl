@@ -3,8 +3,8 @@
 immutable Node
   name::String
   value::String
-  first::Int64
-  last::Int64
+  first::Int
+  last::Int
   children::Array #::Array{Node}
   ruleType::Type
   sym::Any
@@ -13,7 +13,7 @@ immutable Node
     return new(node.name, node.value, node.first, node.last, node.children, node.ruleType, node.sym)
   end
 
-  function Node(name::String, value::String, first::Int64, last::Int64, children::Array, ruleType::Type)
+  function Node(name::String, value::String, first::Int, last::Int, children::Array, ruleType::Type)
     if length(name) == 0
       sym = nothing
     else
@@ -24,7 +24,7 @@ immutable Node
   end
 end
 
-function Node(name::String, value::String, first::Int64, last::Int64, typ)
+function Node(name::String, value::String, first::Int, last::Int, typ)
   return Node(name, value, first, last, [], typ)
 end
 

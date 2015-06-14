@@ -199,15 +199,15 @@ end
 type MultipleRule <: Rule
   name::String
   value::Rule
-  minCount::Int64
-  maxCount::Int64
+  minCount::Int
+  maxCount::Int
   action
 
-  function MultipleRule(name::String, value::Rule, minCount::Int64, maxCount::Int64)
+  function MultipleRule(name::String, value::Rule, minCount::Int, maxCount::Int)
     return new(name, value, minCount, maxCount, no_action)
   end
 
-  function MultipleRule(value::Rule, minCount::Int64, maxCount::Int64)
+  function MultipleRule(value::Rule, minCount::Int, maxCount::Int)
     return new("", value, minCount, maxCount, no_action)
   end
 end
@@ -293,14 +293,14 @@ type ListRule <: Rule
   name::String
   entry::Rule
   delim::Rule
-  min::Int64
+  min::Int
   action
 
   function ListRule(name::String, entry::Rule, delim::Rule)
     return new(name, entry, delim, 1, no_action)
   end
 
-  function ListRule(name::String, entry::Rule, delim::Rule, min::Int64)
+  function ListRule(name::String, entry::Rule, delim::Rule, min::Int)
     return new(name, entry, delim, min, no_action)
   end
 end
