@@ -85,9 +85,9 @@ function transform(fn::Function, node::Node)
   return fn(node, transformed, label)
 end
 
-unref{T <: Any}(value::T) = value
-unref{T <: Rule}(node::Node, ::Type{T}) = node
-unref(node::Node, ::Type{ReferencedRule}) = node.children[1]
+unref{T <: Any}(value::T) = [value]
+unref{T <: Rule}(node::Node, ::Type{T}) = [node]
+unref(node::Node, ::Type{ReferencedRule}) = node.children
 unref(node::Node) = unref(node, node.ruleType)
 
 function make_node(rule, value, first, last, children::Array)
@@ -118,7 +118,7 @@ function uncached_parse(grammar::Grammar, rule::OrRule, text::String, pos::Int64
     (child, pos, error) = parse(grammar, branch, text, pos, cache)
 
     if child !== nothing
-      node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [unref(child)])
+      node = make_node(rule, text[firstPos:pos-1], firstPos, pos, unref(child))
       return (node, pos, error)
     end
   end
@@ -141,7 +141,7 @@ function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos::Int6
     end
 
     if child !== nothing
-      push!(value, unref(child))
+      append!(value, unref(child))
     end
   end
 
@@ -190,12 +190,12 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::String, pos
   end
 
   # and continue making matches for as long as we can
-  children = {unref(child)}
+  children = unref(child)
   while error == nothing
     (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
 
     if error === nothing && child !== nothing
-      push!(children, unref(child))
+      append!(children, unref(child))
     end
   end
 
@@ -213,7 +213,7 @@ function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, po
     (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
 
     if error === nothing && child !== nothing
-      push!(children, unref(child))
+      append!(children, unref(child))
     end
   end
 
@@ -253,8 +253,8 @@ function uncached_parse(grammar::Grammar, rule::OptionalRule, text::String, pos:
   firstPos = pos
 
   if child !== nothing
-    node = make_node(rule, text[firstPos:pos-1], firstPos, pos, [unref(child)])
-    return (unref(node), pos, error)
+    node = make_node(rule, text[firstPos:pos-1], firstPos, pos, unref(child))
+    return (node, pos, error)
   end
 
   # no error, but we also don't move the position or return a valid node
@@ -275,7 +275,7 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int
     (child, pos, error) = parse(grammar, rule.entry, text, pos, cache)
 
     if child !== nothing
-      push!(children, unref(child))
+      append!(children, unref(child))
       (dchild, pos, error) = parse(grammar, rule.delim, text, pos, cache)
     else
       break
@@ -311,6 +311,25 @@ function uncached_parse(grammar::Grammar, rule::NotRule, text::String, pos::Int6
   end
 
   return (nothing, pos, error)
+end
+
+function uncached_parse(grammar::Grammar, rule::EmptyRule, text::String, pos::Int64, cache)
+  # need to explicitely call rule's action because nothing is consumed
+  if rule.action != nothing
+    rule.action(rule, "", pos, pos, [])
+  end
+
+  return (nothing, pos, nothing)
+end
+
+function uncached_parse(grammar::Grammar, rule::EndOfFileRule, text::String, pos::Int64, cache)
+  # need to explicitely call rule's action because nothing is consumed
+  if pos == length(text)
+    #rule.action(rule, value, first, last, children)
+    rule.action(rule, "", length(text), length(text), [])
+  end
+
+  return (nothing, pos, nothing)
 end
 
 function uncached_parse(grammar::Grammar, rule::IntegerRule, text::String, pos::Int64, cache)

@@ -11,7 +11,18 @@ type Grammar
   rules::Dict{Symbol, Rule}
 end
 
+# empty rule is also accepted and never consumes
 type EmptyRule <: Rule
+  name
+  action
+
+  function EmptyRule()
+    return new("")
+  end
+  
+  function EmptyRule(name::String)
+    return new(name)
+  end
 end
 
 type ParserData

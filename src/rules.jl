@@ -257,11 +257,11 @@ type OptionalRule <: Rule
   action
 
   function OptionalRule(name::String, value::Rule)
-    return new(name, value, no_action)
+    return new(name, value, or_default_action)
   end
 
   function OptionalRule(value::Rule)
-    return new("", value, no_action)
+    return new("", value, or_default_action)
   end
 end
 
@@ -336,6 +336,20 @@ function show(io::IO, rule::NotRule)
   print(io, "!($(rule.entry))");
 end
 
+function empty(name::String, pdata::ParserData, args::Array)
+  return EmptyRule(name)
+end
+
+type EndOfFileRule <: Rule
+  name::String
+  action
+
+  EndOfFileRule(name::String) = new (name, no_action)
+end
+
+function eof(name::String, pdata::ParserData, args::Array)
+  return EndOfFileRule(name)
+end
 
 # common parsers
 type IntegerRule <: Rule
@@ -361,7 +375,7 @@ function float(name::String, pdata::ParserData, args::Array)
 end
 
 macro grammar(name, definitions)
-  parsers = [:+, :*, :?, :|, :-, :^, :!, :list, :integer, :float]
+  parsers = [:+, :*, :?, :|, :-, :^, :!, :list, :empty, :eof, :integer, :float]
   mapped_parsers = map_symbol_to_function(parsers)
   return parseGrammar(name, definitions, ParserData(mapped_parsers))
 end
@@ -372,6 +386,8 @@ displayValue{T <: Rule}(value, ::Type{T}) = ""
 # except for terminals and regex
 displayValue(value, ::Type{Terminal}) = "'$value',"
 displayValue(value, ::Type{RegexRule}) = "'$value',"
+displayValue(value, ::Type{IntegerRule}) = "$value,"
+displayValue(value, ::Type{FloatRule}) = "$value,"
 
 
 function map_symbol_to_function(lst)
