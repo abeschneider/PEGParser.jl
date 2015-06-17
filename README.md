@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/abeschneider/PEGParser.jl.svg?branch=v0.1.0)](https://travis-ci.org/abeschneider/PEGParser.jl)
+[![Build Status](https://travis-ci.org/abeschneider/PEGParser.jl.svg?branch=master)](https://travis-ci.org/abeschneider/PEGParser.jl)
 
 # PEGParser
 
