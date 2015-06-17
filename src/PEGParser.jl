@@ -205,7 +205,7 @@ end
 
 function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, pos::Int, cache)
   firstPos::Int = pos
-  children::Array{Node} = {}
+  children::Array = {}
 
   error = nothing
   while error == nothing
