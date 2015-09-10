@@ -361,7 +361,7 @@ type EndOfFileRule <: Rule
   name::String
   action
 
-  EndOfFileRule(name::String) = new (name, no_action)
+  EndOfFileRule(name::String) = new(name, no_action)
 end
 
 function eof(name::String, pdata::ParserData, args::Array)

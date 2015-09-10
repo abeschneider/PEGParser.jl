@@ -1,15 +1,16 @@
 using PEGParser
+using Compat
 
 @grammar lispgrammar begin
-  start = cell { _1 }
+  start = cell{ _1 }
   expr = lst | atom
   cell = list(expr, space)
-  lst = (lparen + +(cell) + rparen) { _2.children }
+  lst = (lparen + +(cell) + rparen){ _2.children }
   atom = string | boolean | number | sym
-  boolean = ("#t" | "#f") { _1 == "#t" ? true : false }
-  number = (-space + float) { parsefloat(_1.value) } | (-space + integer) { parseint(_1.value) }
-  string = (dquote + r"[^\"]*" + dquote) { _2.value }
-  sym = r"[^() ]+" { symbol(_0) }
+  boolean = ("#t" | "#f"){ _1 == "#t" ? true : false }
+  number = (-space + float){ parse(Float64, _1.value) } | (-space + integer){ parse(Int, _1.value) }
+  string = (dquote + r"[^\"]*" + dquote){ _2.value }
+  sym = r"[^() ]+"{ symbol(_0) }
 
   dquote = "\""
   lparen = "("

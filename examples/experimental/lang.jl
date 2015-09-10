@@ -1,4 +1,5 @@
 using PEGParser
+using Compat
 
 immutable RangeType
   first
@@ -12,7 +13,7 @@ end
     func_stmt | func_call_stmt | return_stmt | block
   if_stmt = -IF + condition + stmt + *(else_stmt)
   else_stmt = ELSE + stmt
-  block = (LBRACE + block_list + RBRACE) { _2 }
+  block = (LBRACE + block_list + RBRACE){ _2 }
   block_list = list(stmt, NEWLINE) #{ children }
   atom = string | range | number | name
   value = expr | atom
@@ -20,15 +21,15 @@ end
   condition = value + comparison + value
   comparison = EQ | NE | LTE | GTE | LT | GT
 
-  string = (-SPACE + r"\"[^\"]*\"") { _1.value }
+  string = (-SPACE + r"\"[^\"]*\""){ _1.value }
 
   number = float_number | integer_number
-  integer_number = (-SPACE + integer) { parseint(_1.value) }
-  float_number = (-SPACE + float) { parsefloat(_1.value) }
+  integer_number = (-SPACE + integer){ parse(Int, _1.value) }
+  float_number = (-SPACE + float){ parse(Float64, _1.value) }
 
   bool = TRUE | FALSE
-  range = (number + COLON + number) { RangeType(_1, _3, 1) }
-  name = (-SPACE + r"[a-zA-Z_][0-9a-zA-Z_]*") { symbol(_1.value) }
+  range = (number + COLON + number){ RangeType(_1, _3, 1) }
+  name = (-SPACE + r"[a-zA-Z_][0-9a-zA-Z_]*"){ symbol(_1.value) }
 
   expr_op = term + op1 + expr
   expr = expr_op | term
@@ -36,9 +37,9 @@ end
 
   term = term_op | factor
   factor = atom | pfactor
-  pfactor = (LPAREN + expr + RPAREN) { _2 }
-  op1 = (ADD | SUB) { symbol(_1.value) }
-  op2 = (MULT | DIV) { symbol(_1.value) }
+  pfactor = (LPAREN + expr + RPAREN){ _2 }
+  op1 = (ADD | SUB){ symbol(_1.value) }
+  op2 = (MULT | DIV){ symbol(_1.value) }
 
   for_stmt = -FOR + name + -IN + value + stmt
 
@@ -58,10 +59,10 @@ end
   return_stmt = -RETURN + value
 
 
-  ADD = (-SPACE + "+") { _1 }
-  SUB = (-SPACE + "-") { _1 }
-  MULT = (-SPACE + "*") { _1 }
-  DIV = (-SPACE + "/") { _1 }
+  ADD = (-SPACE + "+"){ _1 }
+  SUB = (-SPACE + "-"){ _1 }
+  MULT = (-SPACE + "*"){ _1 }
+  DIV = (-SPACE + "/"){ _1 }
   FUNCTION = SPACE + "function"
   IF = SPACE + "if"
   FOR = SPACE + "for"

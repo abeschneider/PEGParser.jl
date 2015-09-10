@@ -1,5 +1,6 @@
 using PEGParser
 import PEGParser.uncached_parse
+using Compat
 
 type RepeatedRule <: Rule
   name::String
@@ -53,4 +54,4 @@ data = "abcabcabc 3"
 
 # value of our new rule should evaluate to the number of times we
 # saw a repeat of the given text
-@assert int(ast.children[1]) == int(ast.children[2].value)
+@assert parse(Int, ast.children[1]) == parse(Int, ast.children[2].value)

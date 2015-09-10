@@ -3,6 +3,7 @@ using Base.Test
 using PEGParser
 using PEGParser: AndRule, IntegerRule, FloatRule
 import Base.float
+using Compat
 
 function test_default_or_action()
   @grammar grammar begin
@@ -19,7 +20,7 @@ end
 function test_custom_action1()
 	@grammar grammar begin
 		# transform to just the integer value
-		start = ("value:" + integer) { int(_2.value) }
+		start = ("value:" + integer){ parse(Int, _2.value) }
 	end
 
 	(ast, pos, error) = parse(grammar, "value:5")
@@ -30,8 +31,8 @@ end
 
 function test_custom_action2()
 	@grammar grammar begin
-		start = (integer + "::integer") { int(_1.value) } | 
-				(float + "::float") { float(_1.value) }
+		start = (integer + "::integer"){ parse(Int, _1.value) } |
+				(float + "::float"){ parse(Float64, _1.value) }
 	end
 
 	(ast, pos, error) = parse(grammar, "5::integer")
@@ -45,11 +46,11 @@ end
 
 function test_custom_action3()
 	@grammar grammar begin
-		start = ((integer + "::integer") | (float + "::float")) { _1 }
+		start = ((integer + "::integer") | (float + "::float")){ _1 }
 	end
 
 	(ast, pos, error) = parse(grammar, "5::integer")
-	
+
 	# should have the first and-rule
 	@test ast.ruleType == AndRule
 	@test length(ast.children) == 2
@@ -65,8 +66,8 @@ end
 
 function test_custom_action4()
 	@grammar grammar begin
-		start = ((r"[a-zA-Z][a-zA-Z0-9_]*" + "::integer") { symbol(_1.value) } + 
-			"=" + integer { int(_0) }) { (_1, _3) }
+		start = ((r"[a-zA-Z][a-zA-Z0-9_]*" + "::integer"){ symbol(_1.value) } +
+			"=" + integer{ parse(Int, _0) }){ (_1, _3) }
 	end
 
 	(ast, pos, error) = parse(grammar, "foo2::integer=5")
