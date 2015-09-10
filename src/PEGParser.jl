@@ -298,6 +298,10 @@ function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos:
   return (nothing, pos, error)
 end
 
+function uncached_parse(grammar::Grammar, rule::LookAheadRule, text::String, pos::Int, cache)
+    return (nothing, pos, nothing)
+end
+
 function uncached_parse(grammar::Grammar, rule::NotRule, text::String, pos::Int, cache)
   # try to parse rule
   (child, newpos, error) = parse(grammar, rule.entry, text, pos, cache)
