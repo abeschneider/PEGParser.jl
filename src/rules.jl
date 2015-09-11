@@ -270,6 +270,23 @@ function ?(name::String, pdata::ParserData, args::Array)
 end
 
 
+# Look ahead
+type LookAheadRule <: Rule
+    name::String
+    value::Rule
+    action
+
+    function LookAheadRule(name::String, value::Rule)
+        return new(name, value, no_action)
+    end
+end
+
+function >(name::String, pData::ParserData, args::Array)
+    if length(args) == 1
+        return LookAheadRule(name, parseDefinition("$(name)_value", args[1], pData))
+    end
+end
+
 # Suppress
 type SuppressRule <: Rule
   name::String
@@ -375,7 +392,7 @@ function float(name::String, pdata::ParserData, args::Array)
 end
 
 macro grammar(name, definitions)
-  parsers = [:+, :*, :?, :|, :-, :^, :!, :list, :empty, :eof, :integer, :float]
+  parsers = [:+, :*, :?, :|, :-, :^, :!, :>, :list, :empty, :eof, :integer, :float]
   mapped_parsers = map_symbol_to_function(parsers)
   return parseGrammar(name, definitions, ParserData(mapped_parsers))
 end
