@@ -1,4 +1,5 @@
 using PEGParser
+using Compat
 
 @grammar calc1 begin
   start = (number + op + number) {
@@ -6,9 +7,9 @@ using PEGParser
   }
 
   op = plus | minus
-  number = (-space + r"[0-9]+") {parseint(_1.value)}
-  plus = (-space + "+") {symbol(_1.value)}
-  minus = (-space + "-") {symbol(_1.value)}
+  number = (-space + r"[0-9]+"){parse(Int, _1.value)}
+  plus = (-space + "+"){symbol(_1.value)}
+  minus = (-space + "-"){symbol(_1.value)}
   space = r"[ \t\n\r]*"
 end
 

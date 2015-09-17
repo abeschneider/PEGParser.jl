@@ -1,6 +1,7 @@
 import Base.show
 import Base.convert
 import Base.getindex
+using Compat
 
 abstract Rule
 
@@ -19,7 +20,7 @@ type EmptyRule <: Rule
   function EmptyRule()
     return new("")
   end
-  
+
   function EmptyRule(name::String)
     return new(name)
   end
@@ -47,10 +48,10 @@ end
 expand_names(value) = value
 
 # if it's a symbol, check that it matches, and if so, convert it
-function expand_names(sym::Symbol)  
+function expand_names(sym::Symbol)
   m = match(r"_(\d+)", string(sym))
   if m !== nothing
-    i = parseint(m.captures[1])
+    i = parse(Int, m.captures[1])
 
     return i == 0 ? :(value) : :(children[$i])
   end
@@ -99,7 +100,7 @@ function collect_rules(rule::Rule, lst::Array)
 end
 
 function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
-  code = {}
+  code = Any[]
   push!(code, :(rules = Dict()))
 
   all_rules = Rule[]

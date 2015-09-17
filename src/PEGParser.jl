@@ -1,6 +1,6 @@
 module PEGParser
 
-import Base: show, parse
+import Base: show, parse, +, |, *, ^, >, -, !
 
 include("rules.jl")
 
@@ -131,7 +131,7 @@ function uncached_parse(grammar::Grammar, rule::AndRule, text::String, pos::Int,
   firstPos = pos;
 
   # All items in sequence must match, otherwise give an error
-  value = {}
+  value = Any[]
   for item in rule.values
     (child, pos, error) = parse(grammar, item, text, pos, cache)
 
@@ -205,7 +205,7 @@ end
 
 function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::String, pos::Int, cache)
   firstPos::Int = pos
-  children::Array = {}
+  children::Array = Any[]
 
   error = nothing
   while error == nothing
@@ -268,7 +268,7 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::String, pos::Int
   count = 0
 
   error = nothing
-  children = {}
+  children = Any[]
 
   # continue making matches for as long as we can
   while error === nothing
@@ -299,7 +299,12 @@ function uncached_parse(grammar::Grammar, rule::SuppressRule, text::String, pos:
 end
 
 function uncached_parse(grammar::Grammar, rule::LookAheadRule, text::String, pos::Int, cache)
-    return (nothing, pos, nothing)
+    (_, newPos, error) = uncached_parse(grammar, rule.value, text, pos, cache)
+    if error !== nothing
+        return (nothing, newPos, error)
+    else
+        return (nothing, pos, nothing)
+    end
 end
 
 function uncached_parse(grammar::Grammar, rule::NotRule, text::String, pos::Int, cache)

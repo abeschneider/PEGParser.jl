@@ -2,6 +2,7 @@ using Base.Test
 
 using PEGParser
 import PEGParser: Node, StandardCache
+using Compat
 
 function test_string1_ncache()
   @grammar grammar begin
@@ -412,8 +413,8 @@ end
 function test_semantic_action()
   @grammar grammar begin
     start = list(number, COMMA)
-    number = (-SPACE + float) { parsefloat(_1.value) } |
-             (-SPACE + integer) { parseint(_1.value) }
+    number = (-SPACE + float){ parse(Float64, _1.value) } |
+             (-SPACE + integer){ parse(Int64, _1.value) }
     COMMA = SPACE + ","
     SPACE = r"[ \t\n]*"
   end

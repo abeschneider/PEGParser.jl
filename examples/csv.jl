@@ -1,12 +1,12 @@
 using PEGParser
 
 @grammar csv begin
-  start = list(record, crlf) { children }
-  record = list(field, comma) { {children} }
+  start = list(record, crlf){ children }
+  record = list(field, comma){ {children} }
   field = escaped_field | unescaped_field
-  escaped_field = (dquote + escaped_field_value + dquote) { _2 }
-  escaped_field_value = r"[ ,\n\r!#$%&'()*+\-./0-~]+|\"\"" { _0 }
-  unescaped_field = r"[ !#$%&'()*+\-./0-~]+" { _0 }
+  escaped_field = (dquote + escaped_field_value + dquote){ _2 }
+  escaped_field_value = r"[ ,\n\r!#$%&'()*+\-./0-~]+|\"\""{ _0 }
+  unescaped_field = r"[ !#$%&'()*+\-./0-~]+"{ _0 }
   crlf = r"[\n\r]+"
   dquote = '"'
   dqoute2 = "\"\""
