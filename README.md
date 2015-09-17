@@ -25,6 +25,7 @@ The following rules can be used:
 * Optional: ?(a + b)
 * One or more: `+((a + b) | (c + d))`
 * Zero or more: `*((a + b) | (c + d))`
+* Look ahead: `a > (b + c)`
 * Regular expressions: `r"[a-zA-Z]+"`
 * Lists: `list(rule, delim)` *or* `list(rule, delim, min=1)`
 * Suppression: `-rule`
