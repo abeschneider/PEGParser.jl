@@ -21,7 +21,7 @@ type EmptyRule <: Rule
     return new("")
   end
 
-  function EmptyRule(name::String)
+  function EmptyRule(name::AbstractString)
     return new(name)
   end
 end
@@ -33,7 +33,7 @@ type ParserData
   ParserData(parsers) = new(parsers)
 end
 
-function parseDefinition(name::String, sym::Symbol, pdata::ParserData)
+function parseDefinition(name::AbstractString, sym::Symbol, pdata::ParserData)
   fn = get(pdata.parsers, sym, nothing)
 
   if fn !== nothing
@@ -68,7 +68,7 @@ end
 # FIXME: There is a weird mismatch in the parsers and parseDefinition..
 # should they really be different? if not, parseDefinition might need
 # to be changed to allow for arrays to be passed in
-function parseDefinition(name::String, expr::Expr, pdata::ParserData)
+function parseDefinition(name::AbstractString, expr::Expr, pdata::ParserData)
   rule = EmptyRule()
 
   # if it's a macro (e.g. r"regex", then we want to expand it first)

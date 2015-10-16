@@ -9,19 +9,19 @@ or_default_action(rule, value, first, last, children) = children[1]
 
 # Terminal
 type Terminal <: Rule
-  name::String
-  value::String
+  name::AbstractString
+  value::AbstractString
   action
 
-  function Terminal(name::String, value::String)
+  function Terminal(name::AbstractString, value::AbstractString)
     return new(name, SubString(value, 1), no_action);
   end
 
-  function Terminal(name::String, value::Char)
+  function Terminal(name::AbstractString, value::Char)
     return new(name, "$value", no_action);
   end
 
-  function Terminal(value::String)
+  function Terminal(value::AbstractString)
     return new("", SubString(value, 1), no_action)
   end
 end
@@ -30,21 +30,21 @@ function show(io::IO, t::Terminal)
   print(io, "$(t.value)");
 end
 
-function parseDefinition(name::String, value::String, pdata::ParserData)
+function parseDefinition(name::AbstractString, value::AbstractString, pdata::ParserData)
   return Terminal(name, value)
 end
 
-function parseDefinition(name::String, value::Char, pdata::ParserData)
+function parseDefinition(name::AbstractString, value::Char, pdata::ParserData)
   return Terminal(name, value)
 end
 
 # References
 type ReferencedRule <: Rule
-  name::String
+  name::AbstractString
   symbol::Symbol
   action
 
-  function ReferencedRule(name::String, symbol::Symbol)
+  function ReferencedRule(name::AbstractString, symbol::Symbol)
     return new(name, symbol, no_action)
   end
 
@@ -53,7 +53,7 @@ type ReferencedRule <: Rule
   end
 end
 
-function parseDefinition(name::String, sym::Symbol, pdata::ParserData)
+function parseDefinition(name::AbstractString, sym::Symbol, pdata::ParserData)
   fn = get(pdata.parsers, sym, nothing)
 
   if fn !== nothing
@@ -66,11 +66,11 @@ end
 
 # And
 type AndRule <: Rule
-  name::String
+  name::AbstractString
   values::Array{Rule}
   action
 
-  function AndRule(name::String, values::Array{Rule})
+  function AndRule(name::AbstractString, values::Array{Rule})
     return new(name, values, no_action)
   end
 
@@ -81,7 +81,7 @@ end
 
 get_children(rule::AndRule) = rule.values
 
-function +(name::String, pdata::ParserData, args::Array)
+function +(name::AbstractString, pdata::ParserData, args::Array)
   if length(args) > 1
     # Addition can contain multiple entries
     values::Array{Rule} = [parseDefinition("$(name)_$i", arg, pdata) for (i, arg) in enumerate(args)]
@@ -107,24 +107,24 @@ end
 
 # Or
 type OrRule <: Rule
-  name::String
+  name::AbstractString
   values::Array{Rule}
   action
 
 
-  function OrRule(name::String, left::OrRule, right::OrRule)
+  function OrRule(name::AbstractString, left::OrRule, right::OrRule)
     return new(name, append!(left.values, right.values), or_default_action)
   end
 
-  function OrRule(name::String, left::OrRule, right::Rule)
+  function OrRule(name::AbstractString, left::OrRule, right::Rule)
     return new(name, push!(left.values, right), or_default_action)
   end
 
-  function OrRule(name::String, left::Rule, right::OrRule)
+  function OrRule(name::AbstractString, left::Rule, right::OrRule)
     return new(name, [left, right], or_default_action)
   end
 
-  function OrRule(name::String, left::Rule, right::Rule)
+  function OrRule(name::AbstractString, left::Rule, right::Rule)
     return new(name, [left, right], or_default_action)
   end
 end
@@ -137,24 +137,24 @@ function show(io::IO, rule::OrRule)
   print(io, "($(rule.name),$joinedValues,$(rule.action))")
 end
 
-function |(name::String, pdata::ParserData, args::Array)
+function |(name::AbstractString, pdata::ParserData, args::Array)
   left = parseDefinition("$(name)_1", args[1], pdata)
   right = parseDefinition("$(name)_2", args[2], pdata)
   return OrRule(name, left, right)
 end
 
-function parseDefinition(name::String, range::UnitRange, pdata::ParserData)
+function parseDefinition(name::AbstractString, range::UnitRange, pdata::ParserData)
   values = [Terminal(value) for value in range];
   return OrRule(name, values);
 end
 
 # OneOrMore
 type OneOrMoreRule <: Rule
-  name::String
+  name::AbstractString
   value::Rule
   action
 
-  function OneOrMoreRule(name::String, value::Rule)
+  function OneOrMoreRule(name::AbstractString, value::Rule)
     return new(name, value, no_action)
   end
 
@@ -170,11 +170,11 @@ end
 
 # ZeroOrMore
 type ZeroOrMoreRule <: Rule
-  name::String
+  name::AbstractString
   value::Rule
   action
 
-  function ZeroOrMoreRule(name::String, value::Rule)
+  function ZeroOrMoreRule(name::AbstractString, value::Rule)
     return new(name, value, no_action)
   end
 
@@ -187,7 +187,7 @@ function show(io::IO, rule::ZeroOrMoreRule)
   print(io, "*($(rule.value))");
 end
 
-function *(name::String, pdata::ParserData, args::Array)
+function *(name::AbstractString, pdata::ParserData, args::Array)
   if length(args) == 1
     # it's a prefix, so it maps to zero or more rule
     return ZeroOrMoreRule(parseDefinition(name, args[1], pdata))
@@ -197,13 +197,13 @@ end
 
 # Multiple
 type MultipleRule <: Rule
-  name::String
+  name::AbstractString
   value::Rule
   minCount::Int
   maxCount::Int
   action
 
-  function MultipleRule(name::String, value::Rule, minCount::Int, maxCount::Int)
+  function MultipleRule(name::AbstractString, value::Rule, minCount::Int, maxCount::Int)
     return new(name, value, minCount, maxCount, no_action)
   end
 
@@ -216,7 +216,7 @@ function show(io::IO, rule::MultipleRule)
   print(io, "($(rule.value)){$(rule.minCount), $(rule.maxCount)}");
 end
 
-function ^(name::String, pdata::ParserData, args::Array)
+function ^(name::AbstractString, pdata::ParserData, args::Array)
   # FIXME: not sure this is correct..
   count = args[2]
   return MultipleRule(args[1], count.args[1], count.args[2])
@@ -225,11 +225,11 @@ end
 
 # RegEx
 type RegexRule <: Rule
-  name::String
+  name::AbstractString
   value::Regex
   action
 
-  function RegexRule(name::String, value::Regex)
+  function RegexRule(name::AbstractString, value::Regex)
     return new(name, value, no_action)
   end
 
@@ -242,7 +242,7 @@ function show(io::IO, rule::RegexRule)
   print(io, "r($(rule.value.pattern))")
 end
 
-function parseDefinition(name::String, regex::Regex, pdata::ParserData)
+function parseDefinition(name::AbstractString, regex::Regex, pdata::ParserData)
   # TODO: Need to do this to ensure we always match at the beginning,
   # but there should be a safer way to do this
   modRegex = Regex("^$(regex.pattern)")
@@ -252,11 +252,11 @@ end
 
 # Optional
 type OptionalRule <: Rule
-  name::String
+  name::AbstractString
   value::Rule
   action
 
-  function OptionalRule(name::String, value::Rule)
+  function OptionalRule(name::AbstractString, value::Rule)
     return new(name, value, or_default_action)
   end
 
@@ -265,23 +265,23 @@ type OptionalRule <: Rule
   end
 end
 
-function ?(name::String, pdata::ParserData, args::Array)
+function ?(name::AbstractString, pdata::ParserData, args::Array)
   return OptionalRule(parseDefinition(name, args[1], pdata))
 end
 
 
 # Look ahead
 type LookAheadRule <: Rule
-    name::String
+    name::AbstractString
     value::Rule
     action
 
-    function LookAheadRule(name::String, value::Rule)
+    function LookAheadRule(name::AbstractString, value::Rule)
         return new(name, value, no_action)
     end
 end
 
-function >(name::String, pData::ParserData, args::Array)
+function >(name::AbstractString, pData::ParserData, args::Array)
     if length(args) == 1
         return LookAheadRule(name, parseDefinition("$(name)_value", args[1], pData))
     end
@@ -289,16 +289,16 @@ end
 
 # Suppress
 type SuppressRule <: Rule
-  name::String
+  name::AbstractString
   value::Rule
   action
 
-  function SuppressRule(name::String, value::Rule)
+  function SuppressRule(name::AbstractString, value::Rule)
     return new(name, value, no_action)
   end
 end
 
-function -(name::String, pdata::ParserData, args::Array)
+function -(name::AbstractString, pdata::ParserData, args::Array)
   if length(args) == 1
     return SuppressRule(name, parseDefinition("$(name)_value", args[1], pdata))
   end
@@ -307,22 +307,22 @@ end
 
 # List
 type ListRule <: Rule
-  name::String
+  name::AbstractString
   entry::Rule
   delim::Rule
   min::Int
   action
 
-  function ListRule(name::String, entry::Rule, delim::Rule)
+  function ListRule(name::AbstractString, entry::Rule, delim::Rule)
     return new(name, entry, delim, 1, no_action)
   end
 
-  function ListRule(name::String, entry::Rule, delim::Rule, min::Int)
+  function ListRule(name::AbstractString, entry::Rule, delim::Rule, min::Int)
     return new(name, entry, delim, min, no_action)
   end
 end
 
-function list(name::String, pdata::ParserData, args::Array)
+function list(name::AbstractString, pdata::ParserData, args::Array)
   entry = parseDefinition("$(name)_entry", args[1], pdata)
   delim = parseDefinition("$(name)_delim", args[2], pdata)
 
@@ -339,12 +339,12 @@ type NotRule <: Rule
   entry
   action
 
-  function NotRule(name::String, entry::Rule)
+  function NotRule(name::AbstractString, entry::Rule)
     return new(name, entry, no_action)
   end
 end
 
-function !(name::String, pdata::ParserData, args::Array)
+function !(name::AbstractString, pdata::ParserData, args::Array)
   entry = parseDefinition("$(name)_entry", args[1], pdata)
   return NotRule(name, entry)
 end
@@ -353,41 +353,41 @@ function show(io::IO, rule::NotRule)
   print(io, "!($(rule.entry))");
 end
 
-function empty(name::String, pdata::ParserData, args::Array)
+function empty(name::AbstractString, pdata::ParserData, args::Array)
   return EmptyRule(name)
 end
 
 type EndOfFileRule <: Rule
-  name::String
+  name::AbstractString
   action
 
-  EndOfFileRule(name::String) = new(name, no_action)
+  EndOfFileRule(name::AbstractString) = new(name, no_action)
 end
 
-function eof(name::String, pdata::ParserData, args::Array)
+function eof(name::AbstractString, pdata::ParserData, args::Array)
   return EndOfFileRule(name)
 end
 
 # common parsers
 type IntegerRule <: Rule
-  name::String
+  name::AbstractString
   action
 
-  IntegerRule(name::String) = new(name, no_action)
+  IntegerRule(name::AbstractString) = new(name, no_action)
 end
 
 type FloatRule <: Rule
-  name::String
+  name::AbstractString
   action
 
-  FloatRule(name::String) = new(name, no_action)
+  FloatRule(name::AbstractString) = new(name, no_action)
 end
 
-function integer(name::String, pdata::ParserData, args::Array)
+function integer(name::AbstractString, pdata::ParserData, args::Array)
   return IntegerRule(name)
 end
 
-function float(name::String, pdata::ParserData, args::Array)
+function float(name::AbstractString, pdata::ParserData, args::Array)
   return FloatRule(name)
 end
 
