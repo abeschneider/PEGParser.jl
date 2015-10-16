@@ -1,36 +1,27 @@
 # include("EBNF.jl")
 
 immutable Node
-  name::String
-  value::String
-  first::Int
-  last::Int
-  children::Array #::Array{Node}
-  ruleType::Type
-  sym::Any
+    name::AbstractString
+    value::AbstractString
+    first::Int
+    last::Int
+    children::Array #::Array{Node}
+    ruleType::Type
+    sym::Any
 
-  function Node(node::Node)
-    return new(node.name, node.value, node.first, node.last, node.children, node.ruleType, node.sym)
-  end
+    Node(node::Node) =
+        new(node.name, node.value, node.first, node.last, node.children, node.ruleType, node.sym)
 
-  function Node(name::String, value::String, first::Int, last::Int, children::Array, ruleType::Type)
-    if length(name) == 0
-      sym = nothing
-    else
-      sym = symbol(name)
-    end
-
-    return new(name, value, first, last, children, ruleType, sym)
-  end
+    Node(name::AbstractString, value::AbstractString,
+         first::Int, last::Int, children::Array, ruleType::Type) =
+        new(name, value, first, last, children, ruleType,
+            length(name)==0 ? nothing : symbol(name))
 end
 
-function Node(name::String, value::String, first::Int, last::Int, typ)
-  return Node(name, value, first, last, [], typ)
-end
+Node(name::AbstractString, value::AbstractString, first::Int, last::Int, typ) =
+    Node(name, value, first, last, [], typ)
 
-function show{T}(io::IO, val::T, indent)
-  println(io, "$val ($(typeof(val)))")
-end
+show{T}(io::IO, val::T, indent) = println(io, "$val ($(typeof(val)))")
 
 function show(io::IO, node::Node, indent)
   println(io, "node($(node.name)) {$(displayValue(node.value, node.ruleType))$(node.ruleType)}")
@@ -46,6 +37,4 @@ function show(io::IO, node::Node, indent)
   end
 end
 
-function show(io::IO, node::Node)
-    show(io, node, 0)
-end
+show(io::IO, node::Node) = show(io, node, 0)
