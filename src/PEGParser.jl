@@ -39,7 +39,7 @@ function parse(grammar::Grammar, text::AbstractString; cache=nothing, start=:sta
   return (ast, pos, error)
 end
 
-function parse(grammar::Grammar, rule::Rule, text::AbstractString, pos::Int, cache::Nothing)
+function parse(grammar::Grammar, rule::Rule, text::AbstractString, pos::Int, cache::Void)
   return uncached_parse(grammar, rule, text, pos, cache)
 end
 
