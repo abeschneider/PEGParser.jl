@@ -1,5 +1,4 @@
 using PEGParser
-using Compat
 
 @grammar calc3 begin
   start = expr{ _1 }

@@ -1,7 +1,7 @@
 import Base.show
 import Base.convert
 import Base.getindex
-using Compat
+#using Compat
 
 abstract Rule
 

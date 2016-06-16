@@ -1,17 +1,16 @@
 using PEGParser
-using Compat
 
 @grammar calc2 begin
-  start = expr { _1 }
+  start = expr{ _1 }
 
   expr_op = (term + op1 + expr){
-    apply(eval(_2), _1, _3)
+    eval(_2)(_1, _3)
   }
 
   expr = expr_op | term
 
   term_op = (factor + op2 + term){
-    apply(eval(_2), _1, _3)
+    eval(_2)(_1, _3)
   }
 
   term = term_op | factor

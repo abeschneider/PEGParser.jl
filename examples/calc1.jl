@@ -1,9 +1,8 @@
 using PEGParser
-using Compat
 
 @grammar calc1 begin
-  start = (number + op + number) {
-  	apply(eval(_2), _1, _3)
+  start = (number + op + number){
+  	eval(_2)(_1, _3)
   }
 
   op = plus | minus

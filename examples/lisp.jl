@@ -1,5 +1,4 @@
 using PEGParser
-using Compat
 
 @grammar lispgrammar begin
   start = cell{ _1 }
