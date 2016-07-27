@@ -195,7 +195,7 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::AbstractStr
     (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
 
     if error === nothing && child !== nothing
-      append!(children, unref(child))
+      children = [children;collect(unref(child))]
     end
   end
 
