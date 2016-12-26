@@ -1,6 +1,3 @@
-include("grammar.jl")
-include("Node.jl")
-
 function no_action(rule, value, first, last, children)
   return Node(rule.name, value, first, last, children, typeof(rule))
 end

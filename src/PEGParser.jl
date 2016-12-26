@@ -2,6 +2,8 @@ module PEGParser
 
 import Base: show, parse, +, |, *, ^, >, -, !
 
+include("grammar.jl")
+include("Node.jl")
 include("rules.jl")
 
 export parse, StandardCache, ParseError, MatchRule, Node, transform, Grammar, Rule
