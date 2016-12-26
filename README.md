@@ -3,6 +3,7 @@
 # PEGParser
 
 PEGParser is a PEG Parser for Julia with Packrat capabilties. PEGParser was inspired by pyparsing, parsimonious, boost::spirit, as well as several others.
+
 ## Defining a grammar
 
 To define a grammar you can write:
@@ -29,7 +30,7 @@ The following rules can be used:
 * Regular expressions: `r"[a-zA-Z]+"`
 * Lists: `list(rule, delim)` *or* `list(rule, delim, min=1)`
 * Suppression: `-rule`
-* Semantic action: `rule { expr }`
+* Semantic action: `rule{ expr }`
 
 For semantic actions, the `expr` may use the variables: `node`, `value`, `first`, `last`, and `children`. The `value` variable has a corresponding alias `_0` and each element of `children` `_i`, where `i` is the index into `children`. See below for examples using this.
 
@@ -128,18 +129,18 @@ In `calc3.jl`, you can find a different approach to this problem. Instead of try
 
   term = term_op | factor
   factor = number | pfactor
-  pfactor = (lparen + expr + rparen) { _2 }
+  pfactor = (lparen + expr + rparen){ _2 }
   op1 = add | sub
   op2 = mult | div
 
-  number = (-space + float) { parsefloat(_1.value) } | (-space + integer) { parseint(_1.value) }
-  add = (-space + "+") { symbol(_1.value) }
-  sub = (-space + "-") { symbol(_1.value) }
-  mult = (-space + "*") { symbol(_1.value) }
-  div = (-space + "/") { symbol(_1.value) }
+  number = (-space + float){ parse(Float64,_1.value) } | (-space + integer){ parse(Int64,_1.value) }
+  add = (-space + "+"){ symbol(_1.value) }
+  sub = (-space + "-"){ symbol(_1.value) }
+  mult = (-space + "*"){ symbol(_1.value) }
+  div = (-space + "/"){ symbol(_1.value) }
 
-  lparen = (-space + "(") { _1 }
-  rparen = (-space + ")") { _1 }
+  lparen = (-space + "("){ _1 }
+  rparen = (-space + ")"){ _1 }
   space = r"[ \n\r\t]*"
 end
 ```
@@ -165,7 +166,7 @@ node(start) {ReferencedRule}
     3: node(expr_op) {AndRule}
       1: 6 (Int64)
       2: - (Symbol)
-      3: 400.0 (Float64)
+      3: 4.0 (Float64)
 ```
 
 Now that we have an AST, we can create transforms to convert the AST into Julia code:
