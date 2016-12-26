@@ -6,17 +6,12 @@ include("grammar.jl")
 include("Node.jl")
 include("rules.jl")
 
-export parse, StandardCache, ParseError, MatchRule, Node, transform, Grammar, Rule
+export parse, StandardCache, Node, transform, Grammar, Rule
 export @grammar, @set_parsers
 export no_action, or_default_action
 export ParserData, IntegerRule, FloatRule
 export map_symbol_to_function
 export ?, list, parseGrammar, parseDefinition, integer, float
-
-immutable ParseError
-  msg::AbstractString
-  pos::Int
-end
 
 type MatchRule{T} end
 
@@ -35,7 +30,7 @@ function parse(grammar::Grammar, text::AbstractString; cache=nothing, start=:sta
   (ast, pos, error) = parse(grammar, rule, text, 1, cache)
 
   if pos < length(text) + 1
-    error = ParseError("Entire string did not match", pos)
+    error = ParseError("Entire string did not match at pos: $pos")
   end
 
   return (ast, pos, error)
@@ -126,7 +121,7 @@ function uncached_parse(grammar::Grammar, rule::OrRule, text::AbstractString, po
   end
 
   # give error
-  return (nothing, pos, ParseError("No matching branches", pos))
+  return (nothing, pos, ParseError("No matching branches at pos: $pos"))
 end
 
 function uncached_parse(grammar::Grammar, rule::AndRule, text::AbstractString, pos::Int, cache)
@@ -178,7 +173,7 @@ function uncached_parse(grammar::Grammar, rule::Terminal, text::AbstractString, 
   end
 
   len = min(pos+length(rule.value)-1, length(text))
-  return (nothing, pos, ParseError("'$(text[pos:len])' does not match '$(rule.value)'.", pos))
+  return (nothing, pos, ParseError("'$(text[pos:len])' does not match '$(rule.value)'. At pos: $pos"))
 end
 
 # TODO: look into making this more streamlined
@@ -188,7 +183,7 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::AbstractStr
 
   # make sure there is at least one
   if child === nothing
-    return (nothing, pos, ParseError("No match (OneOrMoreRule)", pos))
+    return (nothing, pos, ParseError("No match (OneOrMoreRule) at pos: $pos"))
   end
 
   # and continue making matches for as long as we can
@@ -246,7 +241,7 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::AbstractString,
       return (node, pos, nothing)
     end
   else
-    return (nothing, firstPos, ParseError("Could not match RegEx", pos))
+    return (nothing, firstPos, ParseError("Could not match RegEx at pos: $pos"))
   end
 end
 
@@ -287,7 +282,7 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::AbstractString, 
   end
 
   if count < rule.min
-    return (nothing, pos, ParseError("No match (ListRule)", pos))
+    return (nothing, pos, ParseError("No match (ListRule) at pos: $pos"))
   end
 
   node = make_node(rule, text[firstPos:pos-1], firstPos, pos, children)
@@ -315,7 +310,7 @@ function uncached_parse(grammar::Grammar, rule::NotRule, text::AbstractString, p
 
   # if we match, it's an error
   if error == nothing
-    error = ParseError("No match (NotRule)", pos)
+    error = ParseError("No match (NotRule) at pos: $pos")
   else
     # otherwise, return a success
     error = nothing
@@ -360,7 +355,7 @@ function uncached_parse(grammar::Grammar, rule::IntegerRule, text::AbstractStrin
       return (node, pos, nothing)
     end
   else
-    return (nothing, firstPos, ParseError("Could not match IntegerRule", pos))
+    return (nothing, firstPos, ParseError("Could not match IntegerRule at pos: $pos"))
   end
 end
 
@@ -379,7 +374,7 @@ function uncached_parse(grammar::Grammar, rule::FloatRule, text::AbstractString,
       return (node, pos, nothing)
     end
   else
-    return (nothing, firstPos, ParseError("Could not match FloatRule", pos))
+    return (nothing, firstPos, ParseError("Could not match FloatRule at pos: $pos"))
   end
 end
 
