@@ -90,9 +90,9 @@ function +(name::AbstractString, pdata::ParserData, args::Array)
 end
 
 function show(io::IO, rule::AndRule)
-  values = [string(r) for r in rule.values]
-  joinedValues = join(values, " ")
-  print(io, "($(rule.name),$joinedValues,$(rule.action))");
+  values = [r.name for r in rule.values]
+  joinedValues = join(values, " & ")
+  print(io, "($(rule.name),$joinedValues,$(rule.action))\n");
 end
 
 # TODO: check if actually being used
@@ -129,9 +129,9 @@ end
 get_children(rule::OrRule) = rule.values
 
 function show(io::IO, rule::OrRule)
-  values = [string(r) for r in rule.values]
-  joinedValues = join(values, "|")
-  print(io, "($(rule.name),$joinedValues,$(rule.action))")
+  values = [r.name for r in rule.values]
+  joinedValues = join(values, " | ")
+  print(io, "($(rule.name),$joinedValues,$(rule.action))\n")
 end
 
 function |(name::AbstractString, pdata::ParserData, args::Array)

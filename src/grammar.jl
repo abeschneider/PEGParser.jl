@@ -12,6 +12,13 @@ type Grammar
   rules::Dict{Symbol, Rule}
 end
 
+function show(io::IO,grammar::Grammar)
+  for (sym,rule) in grammar.rules 
+    println("$sym:")
+    show(io,rule)
+  end
+end
+
 # empty rule is also accepted and never consumes
 type EmptyRule <: Rule
   name
