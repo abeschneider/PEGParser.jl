@@ -1,3 +1,6 @@
+showRule(io::IO,name::AbstractString, def::AbstractString, action::AbstractString) =
+  print(io, "$name => $def { $action }")
+
 function no_action(rule, value, first, last, children)
   return Node(rule.name, value, first, last, children, typeof(rule))
 end
@@ -50,6 +53,10 @@ type ReferencedRule <: Rule
   end
 end
 
+function show(io::IO, rule::ReferencedRule)
+  showRule(io, rule.name, "$(rule.symbol) (ReferencedRule)", string(rule.action))
+end
+
 function parseDefinition(name::AbstractString, sym::Symbol, pdata::ParserData)
   fn = get(pdata.parsers, sym, nothing)
 
@@ -92,7 +99,7 @@ end
 function show(io::IO, rule::AndRule)
   values = [r.name for r in rule.values]
   joinedValues = join(values, " & ")
-  print(io, "($(rule.name),$joinedValues,$(rule.action))\n");
+  showRule(io, rule.name, joinedValues, string(rule.action))
 end
 
 # TODO: check if actually being used
@@ -131,7 +138,7 @@ get_children(rule::OrRule) = rule.values
 function show(io::IO, rule::OrRule)
   values = [r.name for r in rule.values]
   joinedValues = join(values, " | ")
-  print(io, "($(rule.name),$joinedValues,$(rule.action))\n")
+  showRule(io,rule.name, joinedValues, string(rule.action))
 end
 
 function |(name::AbstractString, pdata::ParserData, args::Array)
@@ -236,7 +243,7 @@ type RegexRule <: Rule
 end
 
 function show(io::IO, rule::RegexRule)
-  print(io, "r($(rule.value.pattern))")
+  showRule(io, rule.name, "r($(rule.value.pattern))", string(rule.action))
 end
 
 function parseDefinition(name::AbstractString, regex::Regex, pdata::ParserData)

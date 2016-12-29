@@ -13,10 +13,13 @@ type Grammar
 end
 
 function show(io::IO,grammar::Grammar)
+  println("PEGParser.Grammar(Dict{Symbol,PEGParser.Rule}(")
   for (sym,rule) in grammar.rules 
-    println("$sym:")
-    show(io,rule)
+    print("  ")
+    show(rule)
+    println(",")
   end
+  println(")")
 end
 
 # empty rule is also accepted and never consumes
