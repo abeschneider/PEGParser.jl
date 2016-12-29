@@ -44,12 +44,8 @@ type ReferencedRule <: Rule
   symbol::Symbol
   action
 
-  function ReferencedRule(name::AbstractString, symbol::Symbol)
+  function ReferencedRule(name::AbstractString="", symbol::Symbol)
     return new(name, symbol, no_action)
-  end
-
-  function ReferencedRule(symbol::Symbol)
-    return new("", symbol, no_action)
   end
 end
 
