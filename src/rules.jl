@@ -27,7 +27,7 @@ type Terminal <: Rule
 end
 
 function show(io::IO, t::Terminal)
-  print(io, "$(t.value)");
+  print(io, t.name, t.value, string(t.action));
 end
 
 function parseDefinition(name::AbstractString, value::AbstractString, pdata::ParserData)
@@ -44,7 +44,8 @@ type ReferencedRule <: Rule
   symbol::Symbol
   action
 
-  function ReferencedRule(name::AbstractString="", symbol::Symbol)
+  ReferencedRule(symbol::Symbol) = ReferencedRule("",symbol)
+  function ReferencedRule(name::AbstractString, symbol::Symbol)
     return new(name, symbol, no_action)
   end
 end
@@ -164,7 +165,7 @@ type OneOrMoreRule <: Rule
 end
 
 function show(io::IO, rule::OneOrMoreRule)
-  print(io, "+($(rule.value))");
+  showRule(io, rule.name, "+($(rule.value.name))", string(rule.action));
 end
 
 
