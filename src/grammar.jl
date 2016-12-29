@@ -17,11 +17,7 @@ type EmptyRule <: Rule
   name
   action
 
-  function EmptyRule()
-    return new("")
-  end
-
-  function EmptyRule(name::AbstractString)
+  function EmptyRule(name::AbstractString="")
     return new(name)
   end
 end
