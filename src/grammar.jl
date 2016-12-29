@@ -100,6 +100,11 @@ function collect_rules(rule::Rule, lst::Array)
   return lst
 end
 
+"""
+   parseGrammar(grammar_name::Symbol, expr::CodeBlock, pdata::ParserData)
+
+parses the block of code `expr = begin ... end` as a grammar definition block. The result is a new block of code, which when evaluated defines the grammar `grammar_name` accordingly.
+"""
 function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
   code = Any[]
   push!(code, :(rules = Dict()))
