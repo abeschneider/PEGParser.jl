@@ -60,10 +60,6 @@ end
 # default transform is to do nothing
 transform{T}(fn::Function, value::T) = value
 
-function transform(fn::Function, node::Node)
-  return transform(fn, node)
-end
-
 isleaf(node::Node) = isempty(node.children)
 
 function transform(fn::Function, node::Node)

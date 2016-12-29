@@ -34,17 +34,6 @@ type ParserData
   parsers
 end
 
-function parseDefinition(name::AbstractString, sym::Symbol, pdata::ParserData)
-  fn = get(pdata.parsers, sym, nothing)
-
-  if fn !== nothing
-    return fn(name, pdata, nothing)
-  end
-
-  # if not found, just return the symbol
-  return sym
-end
-
 # general case, just return value
 expand_names(value) = value
 
