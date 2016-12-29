@@ -1,4 +1,5 @@
 module PEGParser
+#using Compat
 
 import Base: show, parse, +, |, *, ^, >, -, !
 
@@ -6,7 +7,7 @@ include("grammar.jl")
 include("Node.jl")
 include("rules.jl")
 
-export parse, StandardCache, Node, transform, Grammar, Rule
+export StandardCache, Node, transform, Grammar, Rule
 export @grammar, @set_parsers
 export no_action, or_default_action
 export ParserData, IntegerRule, FloatRule

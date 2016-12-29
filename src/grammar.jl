@@ -1,8 +1,3 @@
-import Base.show
-import Base.convert
-import Base.getindex
-#using Compat
-
 abstract Rule
 
 # by default no children
