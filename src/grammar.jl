@@ -26,11 +26,9 @@ type EmptyRule <: Rule
   end
 end
 
+"map of parsers to use"
 type ParserData
-  # map of parsers to use
   parsers
-
-  ParserData(parsers) = new(parsers)
 end
 
 function parseDefinition(name::AbstractString, sym::Symbol, pdata::ParserData)
