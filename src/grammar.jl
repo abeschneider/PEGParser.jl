@@ -12,6 +12,15 @@ function show(io::IO,grammar::Grammar)
   println(")")
 end
 
+function map_symbol_to_function(lst)
+  m = Dict{Symbol, Function}()
+  for sym in lst
+    m[sym] = eval(sym)
+  end
+
+  return m
+end
+
 macro grammar(name, definitions)
   parsers = [:+, :*, :?, :|, :-, :^, :!, :>, :list, :empty, :eof, :integer, :float]
   mapped_parsers = map_symbol_to_function(parsers)
@@ -45,30 +54,6 @@ function expand_names(expr::Expr)
   return Expr(expr.head, new_args...)
 end
 
-# FIXME: There is a weird mismatch in the parsers and parseDefinition..
-# should they really be different? if not, parseDefinition might need
-# to be changed to allow for arrays to be passed in
-function parseDefinition(name::AbstractString, expr::Expr, pdata::ParserData)
-  rule = EmptyRule()
-
-  # if it's a macro (e.g. r"regex", then we want to expand it first)
-  if expr.head === :macrocall
-    # FIXME: using an evil eval
-    rule = parseDefinition(name, eval(expr), pdata)
-  elseif expr.head === :curly
-    rule = parseDefinition(name, expr.args[1], pdata)
-    rule.action = expand_names(expr.args[2])
-  else
-    parser = get(pdata.parsers, expr.args[1], nothing)
-
-    if parser !== nothing
-      rule = parser(name, pdata, expr.args[2:end])
-    end
-  end
-
-  return rule
-end
-
 function collect_rules(rule::Rule, lst::Array)
   push!(lst, rule)
 
@@ -83,6 +68,8 @@ end
    parseGrammar(grammar_name::Symbol, expr::CodeBlock, pdata::ParserData)
 
 parses the block of code `expr = begin ... end` as a grammar definition block. The result is a new block of code, which when evaluated defines the grammar `grammar_name` accordingly.
+
+`parseGrammar` calls `parseDefinition(name,expr,pdata) for each line in the block of code and expects a `Rule` in return.
 """
 function parseGrammar(grammar_name::Symbol, expr::Expr, pdata::ParserData)
   code = Any[]

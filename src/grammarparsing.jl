@@ -2,11 +2,35 @@
 # parseDefinition #
 ###################
 
-function parseDefinition(name::AbstractString, value::AbstractString, pdata::ParserData)
-  return Terminal(name, value)
+"""
+    parseDefinition(name, expr, ParserData)
+returns the `Rule` object corresponding to the expr in the expression block given to `parseGrammar` (see there for more details). Overloading of this function allows to specify which exprs get turned into which rules.
+"""
+# FIXME: There is a weird mismatch in the parsers and parseDefinition..
+# should they really be different? if not, parseDefinition might need
+# to be changed to allow for arrays to be passed in
+function parseDefinition(name::AbstractString, expr::Expr, pdata::ParserData)
+  rule = EmptyRule()
+
+  # if it's a macro (e.g. r"regex", then we want to expand it first)
+  if expr.head === :macrocall
+    # FIXME: using an evil eval
+    rule = parseDefinition(name, eval(expr), pdata)
+  elseif expr.head === :curly
+    rule = parseDefinition(name, expr.args[1], pdata)
+    rule.action = expand_names(expr.args[2])
+  else
+    parser = get(pdata.parsers, expr.args[1], nothing)
+
+    if parser !== nothing
+      rule = parser(name, pdata, expr.args[2:end])
+    end
+  end
+
+  return rule
 end
 
-function parseDefinition(name::AbstractString, value::Char, pdata::ParserData)
+function parseDefinition(name::AbstractString, value::Union{AbstractString,Char}, pdata::ParserData)
   return Terminal(name, value)
 end
 
