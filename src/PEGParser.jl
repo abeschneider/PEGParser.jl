@@ -21,8 +21,6 @@ type MatchRule{T} end
 # default transform is to do nothing
 transform{T}(fn::Function, value::T) = value
 
-isleaf(node::Node) = isempty(node.children)
-
 function transform(fn::Function, node::Node)
   if isa(node.children, Array)
     transformed = [transform(fn, child) for child in node.children]
