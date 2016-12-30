@@ -142,7 +142,7 @@ end
 function parse_newcachekey(grammar::Grammar, rule::Terminal, text::AbstractString, pos::Int, cache)
   local size::Int = length(rule.value)
 
-  if ismatch(Regex("\^$(rule.value)"),text[pos:end])
+  if startswith(text[pos:end],rule.value)
     node = make_node(rule, text[pos:pos+size-1], pos, pos+size, [])
     return (node, pos+size, nothing)
   end
