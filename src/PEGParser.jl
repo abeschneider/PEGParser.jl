@@ -3,10 +3,11 @@ export @grammar
 export StandardCache, Node, transform, Grammar, Rule
 export no_action, or_default_action
 export ParserData, MatchRule
-export ?, list, parseGrammar, parseDefinition, integer, float
+export ?, list, parseGrammar, parseDefinition
 
 #using Compat
-import Base: show, parse, +, |, *, ^, >, -, !
+import Base: show, parse
+import Base: +, |, *, ^, >, -, !, integer, float # TODO: these should not even conflict with Base
 
 function no_action(rule, value, first, last, children)
   return Node(rule.name, value, first, last, children, typeof(rule))
