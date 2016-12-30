@@ -27,7 +27,7 @@ type Terminal <: Rule
 end
 
 function show(io::IO, t::Terminal)
-  print(io, t.name, t.value, string(t.action));
+  showRule(io, t.name, "'$(t.value)')", string(t.action))
 end
 
 function parseDefinition(name::AbstractString, value::AbstractString, pdata::ParserData)
@@ -297,6 +297,10 @@ type SuppressRule <: Rule
   function SuppressRule(name::AbstractString, value::Rule)
     return new(name, value, no_action)
   end
+end
+
+function show(io::IO, rule::SuppressRule)
+  showRule(io, rule.name, "-($(rule.value))", string(rule.action))
 end
 
 function -(name::AbstractString, pdata::ParserData, args::Array)
