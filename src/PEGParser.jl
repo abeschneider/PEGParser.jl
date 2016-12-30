@@ -48,24 +48,6 @@ function make_node(rule, value, first, last, children::Array)
   return result
 end
 
-
-# TODO: there should be string functions that already do this
-function string_matches(expected::Char, actual::AbstractString, first::Int, last::Int)
-  if first > length(actual)
-    return false
-  end
-
-  return char(actual[first]) == expected;
-end
-
-function string_matches(expected::AbstractString, actual::AbstractString, first::Int, last::Int)
-  if last - 1 > length(actual)
-    return false;
-  end
-
-  return expected == actual[first:last-1];
-end
-
 include("parse.jl")
 
 end
