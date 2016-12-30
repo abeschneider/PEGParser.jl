@@ -1,3 +1,17 @@
+###########
+# Helpers #
+###########
+
+unref{T <: Any}(value::T) = [value]
+unref{T <: Rule}(node::Node, ::Type{T}) = [node]
+unref(node::Node, ::Type{ReferencedRule}) = node.children
+unref(node::Node) = unref(node, node.ruleType)
+
+function make_node(rule, value, first, last, children::Array)
+  #println("make_node: $(rule.action)($rule, $value, first=$first, last=$last, children=$children)")
+  return rule.action(rule, value, first, last, children)
+end
+
 ###############
 # ParserCache #
 ###############

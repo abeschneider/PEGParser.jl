@@ -1,8 +1,3 @@
-abstract Rule
-
-# by default no children
-get_children(rule::Rule) = []
-
 type Grammar
   rules::Dict{Symbol, Rule}
 end
@@ -17,15 +12,12 @@ function show(io::IO,grammar::Grammar)
   println(")")
 end
 
-# empty rule is also accepted and never consumes
-type EmptyRule <: Rule
-  name
-  action
-
-  function EmptyRule(name::AbstractString="")
-    return new(name)
-  end
+macro grammar(name, definitions)
+  parsers = [:+, :*, :?, :|, :-, :^, :!, :>, :list, :empty, :eof, :integer, :float]
+  mapped_parsers = map_symbol_to_function(parsers)
+  return parseGrammar(name, definitions, ParserData(mapped_parsers))
 end
+
 
 "map of parsers to use"
 type ParserData

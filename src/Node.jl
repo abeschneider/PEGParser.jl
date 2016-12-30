@@ -32,6 +32,14 @@ Node(name::AbstractString, value::AbstractString, first::Int, last::Int, typ) =
 
 show{T}(io::IO, val::T, indent) = println(io, "$val ($(typeof(val)))")
 
+# by default don't show anything
+displayValue{T <: Rule}(value, ::Type{T}) = ""
+# except for terminals and regex
+displayValue(value, ::Type{Terminal}) = "'$value',"
+displayValue(value, ::Type{RegexRule}) = "'$value',"
+displayValue(value, ::Type{IntegerRule}) = "$value,"
+displayValue(value, ::Type{FloatRule}) = "$value,"
+
 function show(io::IO, node::Node, indent)
   println(io, "node($(node.name)) {$(displayValue(node.value, node.ruleType))$(node.ruleType)}")
   if isa(node.children, Array)
