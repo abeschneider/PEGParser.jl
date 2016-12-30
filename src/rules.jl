@@ -168,46 +168,21 @@ FloatRule(name::AbstractString) = FloatRule(name, no_action)
 showRule(io::IO,name::AbstractString, def::AbstractString, action::AbstractString) =
   print(io, "$name => $def { $action }")
 
-function show(io::IO, t::Terminal)
-  showRule(io, t.name, "'$(t.value)')", string(t.action))
-end
-
-function show(io::IO, rule::ReferencedRule)
-  showRule(io, rule.name, "$(rule.symbol) (ReferencedRule)", string(rule.action))
-end
-
+show(io::IO, t::Terminal) = showRule(io, t.name, "'$(t.value)')", string(t.action))
+show(io::IO, rule::ReferencedRule) = showRule(io, rule.name, "$(rule.symbol) (ReferencedRule)", string(rule.action))
+show(io::IO, rule::OneOrMoreRule) = showRule(io, rule.name, "+($(rule.value.name))", string(rule.action));
+show(io::IO, rule::ZeroOrMoreRule) = showRule(io, rule.name, "*($(rule.value.name))", string(rule.action));
+show(io::IO, rule::MultipleRule) = showRule(io, rule.name, "($(rule.value)){$(rule.minCount), $(rule.maxCount)}", string(rule.value));
+show(io::IO, rule::RegexRule) = showRule(io, rule.name, "r($(rule.value.pattern))", string(rule.action))
+show(io::IO, rule::SuppressRule) = showRule(io, rule.name, "-($(rule.value))", string(rule.action))
+show(io::IO, rule::NotRule) = showRule(io, rule.name, "!($(rule.entry))", string(rule.action))
 function show(io::IO, rule::AndRule)
   values = [r.name for r in rule.values]
   joinedValues = join(values, " & ")
   showRule(io, rule.name, joinedValues, string(rule.action))
 end
-
 function show(io::IO, rule::OrRule)
   values = [r.name for r in rule.values]
   joinedValues = join(values, " | ")
   showRule(io,rule.name, joinedValues, string(rule.action))
-end
-
-function show(io::IO, rule::OneOrMoreRule)
-  showRule(io, rule.name, "+($(rule.value.name))", string(rule.action));
-end
-
-function show(io::IO, rule::ZeroOrMoreRule)
-  print(io, "*($(rule.value))");
-end
-
-function show(io::IO, rule::MultipleRule)
-  print(io, "($(rule.value)){$(rule.minCount), $(rule.maxCount)}");
-end
-
-function show(io::IO, rule::RegexRule)
-  showRule(io, rule.name, "r($(rule.value.pattern))", string(rule.action))
-end
-
-function show(io::IO, rule::SuppressRule)
-  showRule(io, rule.name, "-($(rule.value))", string(rule.action))
-end
-
-function show(io::IO, rule::NotRule)
-  print(io, "!($(rule.entry))");
 end
