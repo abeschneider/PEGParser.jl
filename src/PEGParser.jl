@@ -7,11 +7,10 @@ include("grammar.jl")
 include("Node.jl")
 include("rules.jl")
 
+export @grammar
 export StandardCache, Node, transform, Grammar, Rule
-export @grammar, @set_parsers
 export no_action, or_default_action
-export ParserData, IntegerRule, FloatRule
-export map_symbol_to_function
+export ParserData
 export ?, list, parseGrammar, parseDefinition, integer, float
 
 type MatchRule{T} end
@@ -43,9 +42,8 @@ unref(node::Node, ::Type{ReferencedRule}) = node.children
 unref(node::Node) = unref(node, node.ruleType)
 
 function make_node(rule, value, first, last, children::Array)
-  # println("rule.action = ", rule.action, rule, value)
-  result = rule.action(rule, value, first, last, children)
-  return result
+  #println("make_node: $(rule.action)($rule, $value, first=$first, last=$last, children=$children)")
+  return rule.action(rule, value, first, last, children)
 end
 
 include("parse.jl")
