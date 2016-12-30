@@ -2,7 +2,7 @@ module PEGParser
 export @grammar
 export StandardCache, Node, transform, Grammar, Rule
 export no_action, or_default_action
-export ParserData
+export ParserData, MatchRule
 export ?, list, parseGrammar, parseDefinition, integer, float
 
 #using Compat

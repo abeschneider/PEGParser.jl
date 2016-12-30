@@ -395,7 +395,7 @@ function test_integer_parser()
 
   (ast, pos, error) = parse(grammar, "5")
   @test error === nothing
-  @test ast.ruleType === IntegerRule
+  @test ast.ruleType === PEGParser.IntegerRule
   @test ast.value == "5"
 end
 
@@ -406,7 +406,7 @@ function test_float_parser()
 
   (ast, pos, error) = parse(grammar, "5.123")
   @test error === nothing
-  @test ast.ruleType === FloatRule
+  @test ast.ruleType === PEGParser.FloatRule
   @test ast.value == "5.123"
 end
 
