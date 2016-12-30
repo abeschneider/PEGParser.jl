@@ -10,7 +10,6 @@ type Terminal <: Rule
   action
 end
 Terminal(name::AbstractString, value) = Terminal(name, string(value), no_action)
-Terminal(value::AbstractString) = Terminal("",value)
 
 type ReferencedRule <: Rule
   name::AbstractString
@@ -18,7 +17,6 @@ type ReferencedRule <: Rule
   action
 end
 ReferencedRule(name::AbstractString, symbol::Symbol) = ReferencedRule(name, symbol, no_action)
-ReferencedRule(symbol::Symbol) = ReferencedRule("",symbol)
 
 type AndRule <: Rule
   name::AbstractString
@@ -26,7 +24,6 @@ type AndRule <: Rule
   action
 end
 AndRule(name::AbstractString, values::Array{Rule}) = AndRule(name, values, no_action)
-AndRule(values::Array{Rule}) = AndRule("",values)
 
 type OrRule <: Rule
   name::AbstractString
@@ -43,22 +40,13 @@ type OneOrMoreRule <: Rule
   value::Rule
   action
 end
-OneOrMoreRule(name::AbstractString, value::Rule) = OneOrMoreRule(name, value, no_action)
-OneOrMoreRule(value::Rule) = OneOrMoreRule("",value)
 
-
-
-# ZeroOrMore
 type ZeroOrMoreRule <: Rule
   name::AbstractString
   value::Rule
   action
 end
-ZeroOrMoreRule(name::AbstractString, value::Rule) = ZeroOrMoreRule(name, value, no_action)
-ZeroOrMoreRule(value::Rule) = ZeroOrMoreRule("", value)
 
-
-# Multiple
 type MultipleRule <: Rule
   name::AbstractString
   value::Rule
@@ -67,50 +55,32 @@ type MultipleRule <: Rule
   action
 end
 MultipleRule(name::AbstractString, value::Rule, minCount::Int, maxCount::Int) = MultipleRule(name, value, minCount, maxCount, no_action)
-MultipleRule(value::Rule, minCount::Int, maxCount::Int) = MultipleRule("", value, minCount, maxCount)
 
-
-# RegEx
 type RegexRule <: Rule
   name::AbstractString
   value::Regex
   action
 end
 RegexRule(name::AbstractString, value::Regex) = RegexRule(name, value, no_action)
-RegexRule(value::Regex) = RegexRule("", Regex("^$(value.pattern)"))
 
-
-
-# Optional
 type OptionalRule <: Rule
   name::AbstractString
   value::Rule
   action
 end
-OptionalRule(name::AbstractString, value::Rule) = OptionalRule(name, value, or_default_action)
-OptionalRule(value::Rule) = OptionalRule("", value)
 
-
-# Look ahead
 type LookAheadRule <: Rule
     name::AbstractString
     value::Rule
     action
 end
-LookAheadRule(name::AbstractString, value::Rule) = LookAheadRule(name, value, no_action)
 
-
-# Suppress
 type SuppressRule <: Rule
   name::AbstractString
   value::Rule
   action
 end
-SuppressRule(name::AbstractString, value::Rule) = SuppressRule(name, value, no_action)
 
-
-
-# List
 type ListRule <: Rule
   name::AbstractString
   entry::Rule
@@ -120,8 +90,6 @@ type ListRule <: Rule
 end
 ListRule(name::AbstractString, entry::Rule, delim::Rule, min::Int=1) = ListRule(name, entry, delim, min, no_action)
 
-
-# Not
 type NotRule <: Rule
   name
   entry
@@ -129,36 +97,42 @@ type NotRule <: Rule
 end
 NotRule(name::AbstractString, entry::Rule) = NotRule(name, entry, no_action)
 
-
-
-# EOF
 type EndOfFileRule <: Rule
   name::AbstractString
   action
 end
-EndOfFileRule(name::AbstractString) = new(name, no_action)
-
 
 # empty rule is also accepted and never consumes
 type EmptyRule <: Rule
   name
   action
 end
-EmptyRule(name::AbstractString="") = EmptyRule(name,no_action)
 
-
-# common parser rules
 type IntegerRule <: Rule
   name::AbstractString
   action
 end
-IntegerRule(name::AbstractString) = IntegerRule(name, no_action)
 
 type FloatRule <: Rule
   name::AbstractString
   action
 end
-FloatRule(name::AbstractString) = FloatRule(name, no_action)
+
+################
+# Constructors #
+################
+
+for rule in [FloatRule, IntegerRule, EmptyRule, EndOfFileRule]
+  eval(parse("$rule(name::AbstractString) = $rule(name, no_action)"))
+end
+
+for rule in [SuppressRule, LookAheadRule, OptionalRule, ZeroOrMoreRule, OneOrMoreRule]
+  eval(parse("$rule(name::AbstractString, value::Rule) = $rule(name, value, no_action)"))
+end
+
+for rule in subtypes(Rule)
+  eval(parse("$rule(args...) = $rule(\"\", args...)"))
+end
 
 
 ########
