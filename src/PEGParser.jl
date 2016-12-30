@@ -26,6 +26,11 @@ type StandardCache <: ParserCache
   end
 end
 
+"""
+    parse(grammar, text; cache::ParserCache=nothing, start=:start)
+parses `text` according to `grammar` to yield a tuple consisting of Abstract Syntax Tree, final matched position and error (ast, pos, error) depending on outcome.
+`start` specifies the symbol associated to the rule at the top of the AST. Specifying a `cache` different than `nothing` allows to reuse previous work, whenever the same rule is evaluated at the same position again.
+"""
 function parse(grammar::Grammar, text::AbstractString; cache=nothing, start=:start)
   rule = grammar.rules[start]
   (ast, pos, error) = parse(grammar, rule, text, 1, cache)
@@ -37,19 +42,25 @@ function parse(grammar::Grammar, text::AbstractString; cache=nothing, start=:sta
   return (ast, pos, error)
 end
 
+"""
+    parse(grammar, rule, text, pos, cache)
+parses `text` according to `rule` within `grammar` starting with position `pos`. Specifying a `cache` different than `nothing` allows to reuse previous work, whenever the same rule has been matched at the same position before. If no `cache` is specified or no match in `cache` is found `parse` resorts to `parse_newcachekey`, because in an non-existent cache every cachekey is new.
+"""
 function parse(grammar::Grammar, rule::Rule, text::AbstractString, pos::Int, cache::Void)
-  return uncached_parse(grammar, rule, text, pos, cache)
+  return parse_newcachekey(grammar, rule, text, pos, cache)
 end
 
 function parse(grammar::Grammar, rule::Rule, text::AbstractString, pos::Int, cache::StandardCache)
   cachekey::AbstractString = "$(object_id(rule))$pos"
   if haskey(cache.values, cachekey)
+    # lookup cachekey
     cachedresult = cache.values[cachekey]
     (node, pos, error) = (cachedresult, cachedresult.last, nothing)
   else
-    (node, pos, error) = uncached_parse(grammar, rule, text, pos, cache)
+    # parse new cachekey
+    (node, pos, error) = parse_newcachekey(grammar, rule, text, pos, cache)
 
-    # store in cache if we got back a match
+    # store new cachekey
     if node !== nothing
       cache.values[cachekey] = node
     end
@@ -90,7 +101,11 @@ function make_node(rule, value, first, last, children::Array)
   return result
 end
 
-function uncached_parse(grammar::Grammar, rule::ReferencedRule, text::AbstractString, pos::Int, cache)
+"""
+    parse_newcachekey(grammar, rule, text, pos, cacheforsubnodes)
+parses `text` according to `rule` within `grammar` starting with position `pos` without trying to lookup the complete match in the specified `cache`. Matches of children of the current `rule` along the `text` to parse will however be looked-up in `cache`.
+"""
+function parse_newcachekey(grammar::Grammar, rule::ReferencedRule, text::AbstractString, pos::Int, cache)
   refrule = grammar.rules[rule.symbol]
 
   firstPos = pos
@@ -104,7 +119,7 @@ function uncached_parse(grammar::Grammar, rule::ReferencedRule, text::AbstractSt
   end
 end
 
-function uncached_parse(grammar::Grammar, rule::OrRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::OrRule, text::AbstractString, pos::Int, cache)
   # Try branches in order (left to right). The first branch to match will be marked
   # as a success. If no branches match, then return an error.
   firstPos = pos
@@ -121,7 +136,7 @@ function uncached_parse(grammar::Grammar, rule::OrRule, text::AbstractString, po
   return (nothing, pos, ParseError("No matching branches at pos: $pos"))
 end
 
-function uncached_parse(grammar::Grammar, rule::AndRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::AndRule, text::AbstractString, pos::Int, cache)
   firstPos = pos;
 
   # All items in sequence must match, otherwise give an error
@@ -160,7 +175,7 @@ function string_matches(expected::AbstractString, actual::AbstractString, first:
   return expected == actual[first:last-1];
 end
 
-function uncached_parse(grammar::Grammar, rule::Terminal, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::Terminal, text::AbstractString, pos::Int, cache)
   local size::Int = length(rule.value)
 
   if string_matches(rule.value, text, pos, pos+size)
@@ -174,7 +189,7 @@ function uncached_parse(grammar::Grammar, rule::Terminal, text::AbstractString, 
 end
 
 # TODO: look into making this more streamlined
-function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::OneOrMoreRule, text::AbstractString, pos::Int, cache)
   firstPos = pos
   (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
 
@@ -197,7 +212,7 @@ function uncached_parse(grammar::Grammar, rule::OneOrMoreRule, text::AbstractStr
   return (node, pos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::ZeroOrMoreRule, text::AbstractString, pos::Int, cache)
   firstPos::Int = pos
   children::Array = Any[]
 
@@ -220,7 +235,7 @@ function uncached_parse(grammar::Grammar, rule::ZeroOrMoreRule, text::AbstractSt
   return (node, pos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::RegexRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::RegexRule, text::AbstractString, pos::Int, cache)
   firstPos = pos
 
   # use regex match
@@ -242,7 +257,7 @@ function uncached_parse(grammar::Grammar, rule::RegexRule, text::AbstractString,
   end
 end
 
-function uncached_parse(grammar::Grammar, rule::OptionalRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::OptionalRule, text::AbstractString, pos::Int, cache)
   (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
   firstPos = pos
 
@@ -255,7 +270,7 @@ function uncached_parse(grammar::Grammar, rule::OptionalRule, text::AbstractStri
   return (nothing, firstPos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::ListRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::ListRule, text::AbstractString, pos::Int, cache)
   firstPos = pos
 
   # number of occurances
@@ -286,14 +301,14 @@ function uncached_parse(grammar::Grammar, rule::ListRule, text::AbstractString, 
   return (node, pos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::SuppressRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::SuppressRule, text::AbstractString, pos::Int, cache)
   # use rule contained in the SuppressRule to parse, but don't return anything
-  (_, pos, error) = uncached_parse(grammar, rule.value, text, pos, cache)
+  (_, pos, error) = parse_newcachekey(grammar, rule.value, text, pos, cache)
   return (nothing, pos, error)
 end
 
-function uncached_parse(grammar::Grammar, rule::LookAheadRule, text::AbstractString, pos::Int, cache)
-    (_, newPos, error) = uncached_parse(grammar, rule.value, text, pos, cache)
+function parse_newcachekey(grammar::Grammar, rule::LookAheadRule, text::AbstractString, pos::Int, cache)
+    (_, newPos, error) = parse_newcachekey(grammar, rule.value, text, pos, cache)
     if error !== nothing
         return (nothing, newPos, error)
     else
@@ -301,7 +316,7 @@ function uncached_parse(grammar::Grammar, rule::LookAheadRule, text::AbstractStr
     end
 end
 
-function uncached_parse(grammar::Grammar, rule::NotRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::NotRule, text::AbstractString, pos::Int, cache)
   # try to parse rule
   (child, newpos, error) = parse(grammar, rule.entry, text, pos, cache)
 
@@ -316,7 +331,7 @@ function uncached_parse(grammar::Grammar, rule::NotRule, text::AbstractString, p
   return (nothing, pos, error)
 end
 
-function uncached_parse(grammar::Grammar, rule::EmptyRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::EmptyRule, text::AbstractString, pos::Int, cache)
   # need to explicitely call rule's action because nothing is consumed
   if rule.action != nothing
     rule.action(rule, "", pos, pos, [])
@@ -325,7 +340,7 @@ function uncached_parse(grammar::Grammar, rule::EmptyRule, text::AbstractString,
   return (nothing, pos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::EndOfFileRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::EndOfFileRule, text::AbstractString, pos::Int, cache)
   # need to explicitely call rule's action because nothing is consumed
   if pos == length(text)
     #rule.action(rule, value, first, last, children)
@@ -335,7 +350,7 @@ function uncached_parse(grammar::Grammar, rule::EndOfFileRule, text::AbstractStr
   return (nothing, pos, nothing)
 end
 
-function uncached_parse(grammar::Grammar, rule::IntegerRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::IntegerRule, text::AbstractString, pos::Int, cache)
   #rexpr = r"^[-+]?[0-9]+([eE][-+]?[0-9]+)?"
   # Julia treats anything with 'e' to be a float, so for now follow suit
   rexpr = r"^[-+]?[0-9]+"
@@ -356,7 +371,7 @@ function uncached_parse(grammar::Grammar, rule::IntegerRule, text::AbstractStrin
   end
 end
 
-function uncached_parse(grammar::Grammar, rule::FloatRule, text::AbstractString, pos::Int, cache)
+function parse_newcachekey(grammar::Grammar, rule::FloatRule, text::AbstractString, pos::Int, cache)
   rexpr = r"^[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?"
   firstPos = pos
 
