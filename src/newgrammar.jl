@@ -22,7 +22,7 @@ examplestring = """
   space = r"[ \n\r\t]*"
 """
 
-grammargrammar = """
+grammargrammar_string = """
 start => *(line)
 
 line => emptyline | rule
@@ -50,30 +50,36 @@ function liftchild_childname(rule, value, first, last, children)
   return children[1]
 end
 
-grammargrammar = Grammar(Dict{Symbol,Any}(
-:start     => AndRule(SuppressRule(ZeroOrMoreRule(ReferencedRule(:emptyline))),ZeroOrMoreRule(ReferencedRule(:ruleline))),
+# legibility
+sup = SuppressRule
+ref = ReferencedRule
+and = AndRule
+or  = OrRule
 
-:emptyline => AndRule(SuppressRule(ReferencedRule(:space)), ReferencedRule(:endofline)),
-:ruleline  => AndRule([SuppressRule(ReferencedRule(:space)), ReferencedRule(:rule), ZeroOrMoreRule(SuppressRule(ReferencedRule(:emptyline)))]),
-:rule      => AndRule("RULE",[ReferencedRule(:symbol), SuppressRule(ReferencedRule(:space)), Terminal("=>"), SuppressRule(ReferencedRule(:space)), ReferencedRule(:definition)]),
+"""
+The grammar to parse grammars.
+"""
+const grammargrammar = Grammar(Dict{Symbol,Any}(
+:start     => and( sup(ZeroOrMoreRule(ref(:emptyline))), ZeroOrMoreRule(ref(:ruleline)) ),
 
-:definition=> AndRule([OrRule([ReferencedRule(:parenrule),ReferencedRule(:andrule),ReferencedRule(:refrule)]),OptionalRule(ReferencedRule(:action))]),
+:emptyline => and( sup(ref(:space)), ref(:endofline) ),
+:ruleline  => and([ sup(ref(:space)), ref(:rule), ZeroOrMoreRule(sup(ref(:emptyline))) ]),
+:rule      => and("RULE",[ ref(:symbol), sup(ref(:space)), Terminal("=>"), sup(ref(:space)), ref(:definition)]),
 
-:single    => OrRule([ReferencedRule(:parenrule),ReferencedRule(:term),ReferencedRule(:refrule)]),
-:double    => OrRule([ReferencedRule(:andrule)]),
+:definition=> or([ ref(:parenrule), ref(:andrule), ref(:refrule), ref(:term) ]),
 
-:andrule   => AndRule("AND", [ ReferencedRule(:single), OneOrMoreRule(AndRule([SuppressRule(ReferencedRule(:space)), Terminal('&'), SuppressRule(ReferencedRule(:space)), ReferencedRule(:single)])) ]),
+:single    => and( or([ref(:parenrule),ref(:term),ref(:refrule)]), OptionalRule(and(sup(ref(:space)),ref(:action))) ), # only single token rules can have associated actions (-> unique interpretation)
+:double    => or([ref(:andrule)]),
 
-:parenrule => AndRule("PAREN", [SuppressRule(Terminal('(')), SuppressRule(ReferencedRule(:space)), ReferencedRule(:definition), SuppressRule(ReferencedRule(:space)), SuppressRule(Terminal(')'))],liftchild_childname),
-
-:refrule   => ReferencedRule("REF",:symbol,liftchild_parentname),
-
+:andrule   => and("AND",[ ref(:single), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('&')), sup(ref(:space)), ref(:single) ])) ]),
+:parenrule => and("PAREN",[ sup(Terminal('(')), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
+:refrule   => ref("REF",:symbol,liftchild_parentname),
 :term      => EmptyRule(),
 
-:action    => AndRule("ACTION",[Terminal('{'), RegexRule(r"[^}]*"), Terminal('}')]),
+:action    => and("ACTION",[sup(Terminal('{')), RegexRule(r"[^}]*"), sup(Terminal('}'))]),
 
 :space     => RegexRule(r"[ \t]*"),
-:endofline => OrRule([Terminal("\r\n"), Terminal('\r'), Terminal('\n'), Terminal(';')]),
+:endofline => or([Terminal("\r\n"), Terminal('\r'), Terminal('\n'), Terminal(';')]),
 :symbol    => RegexRule(r"\w+"),
 ))
 
