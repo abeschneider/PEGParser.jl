@@ -60,7 +60,6 @@ ref = ReferencedRule
 and = AndRule
 or  = OrRule
 
-# 'and' groups stronger than 'or'
 """
 The grammar to parse grammars.
 """
@@ -71,16 +70,14 @@ const grammargrammar = Grammar(Dict{Symbol,Any}(
 :ruleline  => and([ sup(ref(:space)), ref(:rule), ZeroOrMoreRule(sup(ref(:emptyline))) ]),
 :rule      => and("RULE",[ ref(:symbol), sup(ref(:space)), Terminal("=>"), sup(ref(:space)), ref(:definition)]),
 
-:definition=> or([ ref(:parenrule), ref(:orrule), ref(:andrule), ref(:quantifier),  ref(:refrule), ref(:term) ]), # from left to right: ' can contain ' => parse order
+:definition=> or([ ref(:parenrule), ref(:double), ref(:single) ]), # from left to right: ' can contain ' => parse order
 
-:quantifier=> or([ ref(:zeromorerule), ref(:onemorerule), ref(:optionalrule), ref(:suppressrule) ]), # actions associated with quantifiers have to be parsed within
-:single    => and( or([ref(:parenrule),ref(:term),ref(:refrule)]), OptionalRule(and(sup(ref(:space)),ref(:action))) ), # only single token rules can have associated actions (-> unique interpretation)
-:singleorquant => or( ref(:single), ref(:quantifier) ),
-:double    => or([ref(:orrule),ref(:andrule)]),
+:single    => and( or([ref(:parenrule),ref(:zeromorerule),ref(:onemorerule),ref(:optionalrule),ref(:suppressrule),ref(:term),ref(:refrule)]), OptionalRule(and(sup(ref(:space)),ref(:action))) ), # only single token rules can have associated actions (-> unique interpretation)
+:double    => or([ref(:orrule),ref(:andrule)]), # 'and' groups stronger than 'or'
 
 :parenrule => and("PAREN",[ sup(Terminal('(')), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
-:orrule    => and("OR",[ or(ref(:andrule),ref(:singleorquant)), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('|')), sup(ref(:space)), or(ref(:andrule),ref(:singleorquant)) ])) ]),
-:andrule   => and("AND",[ ref(:singleorquant), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('&')), sup(ref(:space)), ref(:singleorquant) ])) ]),
+:orrule    => and("OR",[ or(ref(:andrule),ref(:single)), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('|')), sup(ref(:space)), or(ref(:andrule),ref(:single)) ])) ]),
+:andrule   => and("AND",[ ref(:single), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('&')), sup(ref(:space)), ref(:single) ])) ]),
 :zeromorerule => and("*",[ sup(Terminal("*(")), ref(:definition), sup(Terminal(')')) ]),
 :onemorerule => and("+",[ sup(Terminal("+(")), ref(:definition), sup(Terminal(')')) ]),
 :optionalrule => and("?",[ sup(Terminal("?(")), ref(:definition), sup(Terminal(')')) ]),
