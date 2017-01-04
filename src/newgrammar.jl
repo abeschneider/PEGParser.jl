@@ -72,7 +72,7 @@ const grammargrammar = Grammar(Dict{Symbol,Any}(
 
 :definition=> or([ ref(:parenrule), ref(:double), ref(:single) ]), # from left to right: ' can contain ' => parse order
 
-:single    => and( or([ref(:parenrule),ref(:zeromorerule),ref(:onemorerule),ref(:optionalrule),ref(:suppressrule),ref(:term),ref(:refrule)]), OptionalRule(and(sup(ref(:space)),ref(:action))) ), # only single token rules can have associated actions (-> unique interpretation)
+:single    => and( or([ref(:parenrule),ref(:zeromorerule),ref(:onemorerule),ref(:optionalrule),ref(:suppressrule),ref(:regexrule),ref(:term),ref(:refrule)]), OptionalRule(and(sup(ref(:space)),ref(:action))) ), # only single token rules can have associated actions (-> unique interpretation)
 :double    => or([ref(:orrule),ref(:andrule)]), # 'and' groups stronger than 'or'
 
 :parenrule => and("PAREN",[ sup(Terminal('(')), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
@@ -84,6 +84,7 @@ const grammargrammar = Grammar(Dict{Symbol,Any}(
 :suppressrule => and("-",[ sup(Terminal("-(")), ref(:definition), sup(Terminal(')')) ]),
 :refrule   => ref("REF",:symbol,liftchild_parentname),
 :term      => and("TERM",[ sup(Terminal('\'')), RegexRule(r"([^']|'')+"), sup(Terminal('\'')) ], createTermNode),
+:regexrule => and("REGEX",[ sup(Terminal("r(")), RegexRule(r".*?(?=\)r)"), sup(Terminal(")r")) ]), # r(...)r to prevent escaping issues with '(', ')' within the regex, '"' has the same issue but is even weirder because we want to parse a string "... r"..." ..." would then actually have to be input as "... r\"...\" ..." and within the regex "... r\" \\" \" ..."
 
 
 :action    => and("ACTION",[sup(Terminal('{')), RegexRule(r"[^}]*"), sup(Terminal('}'))]),
