@@ -49,6 +49,10 @@ function liftchild_childname(rule, value, first, last, children)
   end
   return children[1]
 end
+function createTermNode(rule, value, first, last, children)
+  disescapedcontent = replace(children[1].value, "''", "'")
+  return Node(rule.name, disescapedcontent, first, last, [], Terminal)
+end
 
 # legibility
 sup = SuppressRule
@@ -76,15 +80,15 @@ const grammargrammar = Grammar(Dict{Symbol,Any}(
 :orrule    => and("OR",[ or(ref(:andrule),ref(:single)), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('|')), sup(ref(:space)), or(ref(:andrule),ref(:single)) ])) ]),
 :parenrule => and("PAREN",[ sup(Terminal('(')), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
 :refrule   => ref("REF",:symbol,liftchild_parentname),
-:term      => EmptyRule(),
+:term      => and("TERM",[ sup(Terminal('\'')), RegexRule(r"([^']|'')+"), sup(Terminal('\'')) ], createTermNode),
 
 :action    => and("ACTION",[sup(Terminal('{')), RegexRule(r"[^}]*"), sup(Terminal('}'))]),
 
 :space     => RegexRule(r"[ \t]*"),
 :endofline => or([Terminal("\r\n"), Terminal('\r'), Terminal('\n'), Terminal(';')]),
-:symbol    => RegexRule(r"\w+"),
+:symbol    => RegexRule(r"[a-zA-Z_][a-zA-Z0-9_]*"),
 ))
 
 const testtext = """ 
-foo => bar & baz|foobar
+foo => bar & baz|foobar | '''foobar'''
 """
