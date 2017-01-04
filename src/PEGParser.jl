@@ -23,5 +23,6 @@ include("grammarparsing.jl")
 include("Node.jl")
 include("transform.jl")
 include("parse.jl")
+include("newgrammar.jl")
 
 end
