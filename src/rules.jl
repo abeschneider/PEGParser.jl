@@ -153,9 +153,9 @@ show(io::IO, rule::RegexRule) = showRule(io, rule.name, "r($(rule.value.pattern)
 show(io::IO, rule::SuppressRule) = showRule(io, rule.name, "-($(rule.value))", string(rule.action))
 show(io::IO, rule::NotRule) = showRule(io, rule.name, "!($(rule.entry))", string(rule.action))
 function show(io::IO, rule::AndRule)
-  values = [r.name for r in rule.values]
+  values = ["$(string(object_id(r))[1:3]) (\"$(r.name)\")" for r in rule.values]
   joinedValues = join(values, " & ")
-  showRule(io, rule.name, joinedValues, string(rule.action))
+  showRule(io, "$(string(object_id(rule))[1:3]) (\"$(rule.name)\")", joinedValues, string(rule.action))
 end
 function show(io::IO, rule::OrRule)
   values = [r.name for r in rule.values]
