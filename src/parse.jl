@@ -75,6 +75,9 @@ function parse(grammar::Grammar, rule::Rule, text::AbstractString, pos::Int, cac
   return (node, pos, error)
 end
 
+function parse(grammar::Grammar, symbol::Symbol, text::AbstractString, pos::Int, cache::Union{StandardCache,Void})
+  parse(grammar, grammar.rules[symbol], text, pos, cache)
+end
 
 
 

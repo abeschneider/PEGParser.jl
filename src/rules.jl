@@ -24,12 +24,14 @@ type AndRule <: Rule
   action
 end
 AndRule(name::AbstractString, values::Array{Rule}) = AndRule(name, values, no_action)
+AndRule(name::AbstractString, left::Rule, right::Rule) = AndRule(name, [left, right], no_action)
 
 type OrRule <: Rule
   name::AbstractString
   values::Array{Rule}
   action
 end
+OrRule(name::AbstractString, rules::Array) = OrRule(name,rules,or_default_action)
 OrRule(name::AbstractString, left::OrRule, right::OrRule) = OrRule(name, append!(left.values, right.values), or_default_action)
 OrRule(name::AbstractString, left::OrRule, right::Rule) = OrRule(name, push!(left.values, right), or_default_action)
 OrRule(name::AbstractString, left::Rule, right::OrRule) = OrRule(name, [left, right], or_default_action)
