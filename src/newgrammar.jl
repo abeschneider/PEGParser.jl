@@ -56,6 +56,7 @@ ref = ReferencedRule
 and = AndRule
 or  = OrRule
 
+# 'and' groups stronger than 'or'
 """
 The grammar to parse grammars.
 """
@@ -66,12 +67,13 @@ const grammargrammar = Grammar(Dict{Symbol,Any}(
 :ruleline  => and([ sup(ref(:space)), ref(:rule), ZeroOrMoreRule(sup(ref(:emptyline))) ]),
 :rule      => and("RULE",[ ref(:symbol), sup(ref(:space)), Terminal("=>"), sup(ref(:space)), ref(:definition)]),
 
-:definition=> or([ ref(:parenrule), ref(:andrule), ref(:refrule), ref(:term) ]),
+:definition=> or([ ref(:parenrule), ref(:orrule), ref(:andrule), ref(:refrule), ref(:term) ]),
 
 :single    => and( or([ref(:parenrule),ref(:term),ref(:refrule)]), OptionalRule(and(sup(ref(:space)),ref(:action))) ), # only single token rules can have associated actions (-> unique interpretation)
-:double    => or([ref(:andrule)]),
+:double    => or([ref(:orrule),ref(:andrule)]),
 
 :andrule   => and("AND",[ ref(:single), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('&')), sup(ref(:space)), ref(:single) ])) ]),
+:orrule    => and("OR",[ or(ref(:andrule),ref(:single)), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('|')), sup(ref(:space)), or(ref(:andrule),ref(:single)) ])) ]),
 :parenrule => and("PAREN",[ sup(Terminal('(')), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
 :refrule   => ref("REF",:symbol,liftchild_parentname),
 :term      => EmptyRule(),
@@ -84,5 +86,5 @@ const grammargrammar = Grammar(Dict{Symbol,Any}(
 ))
 
 const testtext = """ 
-foo => bar & (baz&foobar)
+foo => bar & baz|foobar
 """
