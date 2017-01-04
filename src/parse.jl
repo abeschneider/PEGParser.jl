@@ -205,8 +205,9 @@ function parse_newcachekey(grammar::Grammar, rule::RegexRule, text::AbstractStri
   firstPos = pos
 
   # use regex match
-  if ismatch(rule.value, text[firstPos:end])
-    value = match(rule.value, text[firstPos:end])
+  pattern = Regex("^$(rule.value.pattern)")
+  if ismatch(pattern, text[firstPos:end])
+    value = match(pattern, text[firstPos:end])
 
     if length(value.match) == 0
       # this means that we didn't match, but the regex was optional, so we don't want to give an
