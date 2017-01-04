@@ -71,22 +71,29 @@ const grammargrammar = Grammar(Dict{Symbol,Any}(
 :ruleline  => and([ sup(ref(:space)), ref(:rule), ZeroOrMoreRule(sup(ref(:emptyline))) ]),
 :rule      => and("RULE",[ ref(:symbol), sup(ref(:space)), Terminal("=>"), sup(ref(:space)), ref(:definition)]),
 
-:definition=> or([ ref(:parenrule), ref(:orrule), ref(:andrule), ref(:refrule), ref(:term) ]),
+:definition=> or([ ref(:parenrule), ref(:orrule), ref(:andrule), ref(:quantifier),  ref(:refrule), ref(:term) ]), # from left to right: ' can contain ' => parse order
 
+:quantifier=> or([ ref(:zeromorerule), ref(:onemorerule), ref(:optionalrule), ref(:suppressrule) ]), # actions associated with quantifiers have to be parsed within
 :single    => and( or([ref(:parenrule),ref(:term),ref(:refrule)]), OptionalRule(and(sup(ref(:space)),ref(:action))) ), # only single token rules can have associated actions (-> unique interpretation)
+:singleorquant => or( ref(:single), ref(:quantifier) ),
 :double    => or([ref(:orrule),ref(:andrule)]),
 
-:andrule   => and("AND",[ ref(:single), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('&')), sup(ref(:space)), ref(:single) ])) ]),
-:orrule    => and("OR",[ or(ref(:andrule),ref(:single)), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('|')), sup(ref(:space)), or(ref(:andrule),ref(:single)) ])) ]),
 :parenrule => and("PAREN",[ sup(Terminal('(')), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
+:orrule    => and("OR",[ or(ref(:andrule),ref(:singleorquant)), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('|')), sup(ref(:space)), or(ref(:andrule),ref(:singleorquant)) ])) ]),
+:andrule   => and("AND",[ ref(:singleorquant), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('&')), sup(ref(:space)), ref(:singleorquant) ])) ]),
+:zeromorerule => and("*",[ sup(Terminal("*(")), ref(:definition), sup(Terminal(')')) ]),
+:onemorerule => and("+",[ sup(Terminal("+(")), ref(:definition), sup(Terminal(')')) ]),
+:optionalrule => and("?",[ sup(Terminal("?(")), ref(:definition), sup(Terminal(')')) ]),
+:suppressrule => and("-",[ sup(Terminal("-(")), ref(:definition), sup(Terminal(')')) ]),
 :refrule   => ref("REF",:symbol,liftchild_parentname),
 :term      => and("TERM",[ sup(Terminal('\'')), RegexRule(r"([^']|'')+"), sup(Terminal('\'')) ], createTermNode),
+
 
 :action    => and("ACTION",[sup(Terminal('{')), RegexRule(r"[^}]*"), sup(Terminal('}'))]),
 
 :space     => RegexRule(r"[ \t]*"),
 :endofline => or([Terminal("\r\n"), Terminal('\r'), Terminal('\n'), Terminal(';')]),
-:symbol    => RegexRule(r"[a-zA-Z_][a-zA-Z0-9_]*"),
+:symbol    => RegexRule("SYM",r"[a-zA-Z_][a-zA-Z0-9_]*"),
 ))
 
 const testtext = """ 
