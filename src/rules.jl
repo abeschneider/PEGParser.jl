@@ -141,24 +141,47 @@ end
 # show #
 ########
 
-showRule(io::IO,name::AbstractString, def::AbstractString, action::AbstractString) =
-  print(io, "$name => $def { $action }")
+function showRule(io::IO,name::AbstractString, def::AbstractString, action::AbstractString) 
+  namestring = ""
+  if name != ""
+    namestring = "$name => "
+  end
+  actionstring = ""
+  if action != string(no_action)
+    actionstring = " { $action }"
+  end
+  print(io, "$namestring$def$actionstring")
+end
+function showRuleDouble(io::IO,name::AbstractString, def::AbstractString, action::AbstractString) 
+  namestring = ""
+  if name != ""
+    namestring = "$name => "
+  end
+  actionstring = ""
+  parenth = ""
+  if action != string(no_action)
+    parenth = "("
+    actionstring = ") { $action }"
+  end
+  print(io, "$namestring$parenth$def$actionstring")
+end
 
-show(io::IO, t::Terminal) = showRule(io, t.name, "'$(t.value)')", string(t.action))
-show(io::IO, rule::ReferencedRule) = showRule(io, rule.name, "$(rule.symbol) (ReferencedRule)", string(rule.action))
-show(io::IO, rule::OneOrMoreRule) = showRule(io, rule.name, "+($(rule.value.name))", string(rule.action));
-show(io::IO, rule::ZeroOrMoreRule) = showRule(io, rule.name, "*($(rule.value.name))", string(rule.action));
+show(io::IO, t::Terminal) = showRule(io, t.name, "'$(t.value)'", string(t.action))
+show(io::IO, rule::ReferencedRule) = showRule(io, rule.name, "$(rule.symbol)", string(rule.action))
+show(io::IO, rule::OneOrMoreRule) = showRule(io, rule.name, "+($(string(rule.value)))", string(rule.action));
+show(io::IO, rule::OptionalRule) = showRule(io, rule.name, "?($(string(rule.value)))", string(rule.action));
+show(io::IO, rule::ZeroOrMoreRule) = showRule(io, rule.name, "*($(string(rule.value)))", string(rule.action));
 show(io::IO, rule::MultipleRule) = showRule(io, rule.name, "($(rule.value)){$(rule.minCount), $(rule.maxCount)}", string(rule.value));
 show(io::IO, rule::RegexRule) = showRule(io, rule.name, "r($(rule.value.pattern))", string(rule.action))
-show(io::IO, rule::SuppressRule) = showRule(io, rule.name, "-($(rule.value))", string(rule.action))
+show(io::IO, rule::SuppressRule) = showRule(io, rule.name, "-($(string(rule.value)))", string(rule.action))
 show(io::IO, rule::NotRule) = showRule(io, rule.name, "!($(rule.entry))", string(rule.action))
 function show(io::IO, rule::AndRule)
-  values = ["$(string(object_id(r))[1:3]) (\"$(r.name)\")" for r in rule.values]
+  values = [string(r) for r in rule.values]
   joinedValues = join(values, " & ")
-  showRule(io, "$(string(object_id(rule))[1:3]) (\"$(rule.name)\")", joinedValues, string(rule.action))
+  showRuleDouble(io, rule.name, joinedValues, string(rule.action))
 end
 function show(io::IO, rule::OrRule)
-  values = [r.name for r in rule.values]
+  values = [string(r) for r in rule.values]
   joinedValues = join(values, " | ")
-  showRule(io,rule.name, joinedValues, string(rule.action))
+  showRuleDouble(io,rule.name, joinedValues, string(rule.action))
 end

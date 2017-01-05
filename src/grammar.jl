@@ -5,9 +5,7 @@ end
 function show(io::IO,grammar::Grammar)
   println("PEGParser.Grammar(Dict{Symbol,PEGParser.Rule}(")
   for (sym,rule) in grammar.rules 
-    print("  ")
-    show(rule)
-    println(",")
+    println("  $sym => $(string(rule)),")
   end
   println(")")
 end
