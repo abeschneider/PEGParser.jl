@@ -1,41 +1,6 @@
-examplestring = """
-  start = expr
-
-  expr_op = term + op1 + expr
-  expr = expr_op | term
-  term_op = factor + op2 + term
-
-  term = term_op | factor
-  factor = number | pfactor
-  pfactor = (lparen + expr + rparen){ _2 }
-  op1 = add | sub
-  op2 = mult | div
-
-  number = (-space + float){ parsefloat(_1.value) } | (-space + integer){ parseint(_1.value) }
-  add = (-space + "+"){ symbol(_1.value) }
-  sub = (-space + "-"){ symbol(_1.value) }
-  mult = (-space + "*"){ symbol(_1.value) }
-  div = (-space + "/"){ symbol(_1.value) }
-
-  lparen = (-space + "("){ _1 }
-  rparen = (-space + ")"){ _1 }
-  space = r"[ \n\r\t]*"
-"""
-
-grammargrammar_string = """
-start => *(line)
-
-line => emptyline | rule
-emptyline => space & endofline
-rule => symbol & -(space) & '=>' & -(space) & definition & -(emptyline)
-
-definition => andnode | symbol
-andnode => definition & -(space) & '&' & -(space) & definition
-
-space => r("[ \t]*)
-endofline => "\r\n" | '\r' | '\n'
-symbol => r("\w+")
-"""
+###########
+# ACTIONS #
+###########
 
 function liftchild_parentname(rule, value, first, last, children) 
   if length(children) != 1
@@ -43,7 +8,7 @@ function liftchild_parentname(rule, value, first, last, children)
   end
   return Node(rule.name, children[1].value, first, last, children[1].children, children[1].ruleType)
 end
-function liftchild_childname(rule, value, first, last, children) 
+function liftchild_childname(rule, value, first, last, children)  # or_default_action
   if length(children) != 1
     error("NYI")
   end
@@ -53,6 +18,10 @@ function createTermNode(rule, value, first, last, children)
   disescapedcontent = replace(children[1].value, "''", "'")
   return Node(rule.name, disescapedcontent, first, last, [], Terminal)
 end
+
+###########################################################
+# HANDCONSTRUCTION OF THE GRAMMAR TO PARSE GRAMMARSTRINGS #
+###########################################################
 
 # legibility
 sup = SuppressRule
@@ -64,36 +33,95 @@ or  = OrRule
 The grammar to parse grammars.
 """
 const grammargrammar = Grammar(Dict{Symbol,Any}(
-:start     => and( sup(ZeroOrMoreRule(ref(:emptyline))), ZeroOrMoreRule(ref(:ruleline)) ),
+:start     => and([ sup(ZeroOrMoreRule(ref(:emptyline))), ZeroOrMoreRule("ALLRULES",ref(:ruleline)) ],liftchild_childname),
 
 :emptyline => and( sup(ref(:space)), ref(:endofline) ),
-:ruleline  => and([ sup(ref(:space)), ref(:rule), ZeroOrMoreRule(sup(ref(:emptyline))) ]),
-:rule      => and("RULE",[ ref(:symbol), sup(ref(:space)), Terminal("=>"), sup(ref(:space)), ref(:definition)]),
+:ruleline  => and([ sup(ref(:space)), ref(:rule), ZeroOrMoreRule(sup(ref(:emptyline))) ],liftchild_childname),
+:rule      => and("RULE",[ ref(:symbol), sup(ref(:space)), sup(Terminal("=>")), sup(ref(:space)), ref(:definition)]),
 
 :definition=> or([ ref(:parenrule), ref(:double), ref(:single) ]), # from left to right: ' can contain ' => parse order
 
-:single    => and( or([ref(:parenrule),ref(:zeromorerule),ref(:onemorerule),ref(:optionalrule),ref(:suppressrule),ref(:regexrule),ref(:term),ref(:refrule)]), OptionalRule(and(sup(ref(:space)),ref(:action))) ), # only single token rules can have associated actions (-> unique interpretation)
+:single    => and("SINGLE", or([ref(:parenrule),ref(:zeromorerule),ref(:onemorerule),ref(:optionalrule),ref(:suppressrule),ref(:regexrule),ref(:term),ref(:refrule)]), OptionalRule(and([sup(ref(:space)),ref(:action)],liftchild_childname),liftchild_childname) ), # only single token rules can have associated actions (-> unique interpretation)
 :double    => or([ref(:orrule),ref(:andrule)]), # 'and' groups stronger than 'or'
 
 :parenrule => and("PAREN",[ sup(Terminal('(')), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
-:orrule    => and("OR",[ or(ref(:andrule),ref(:single)), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('|')), sup(ref(:space)), or(ref(:andrule),ref(:single)) ])) ]),
-:andrule   => and("AND",[ ref(:single), OneOrMoreRule(and([ sup(ref(:space)), sup(Terminal('&')), sup(ref(:space)), ref(:single) ])) ]),
+:orrule    => and("OR",[ or(ref(:andrule),ref(:single)), OneOrMoreRule("more",and([ sup(ref(:space)), sup(Terminal('|')), sup(ref(:space)), or(ref(:andrule),ref(:single)) ],liftchild_childname)) ]),
+:andrule   => and("AND",[ ref(:single), OneOrMoreRule("more",and([ sup(ref(:space)), sup(Terminal('&')), sup(ref(:space)), ref(:single) ],liftchild_childname)) ]),
 :zeromorerule => and("*",[ sup(Terminal("*(")), ref(:definition), sup(Terminal(')')) ]),
 :onemorerule => and("+",[ sup(Terminal("+(")), ref(:definition), sup(Terminal(')')) ]),
 :optionalrule => and("?",[ sup(Terminal("?(")), ref(:definition), sup(Terminal(')')) ]),
 :suppressrule => and("-",[ sup(Terminal("-(")), ref(:definition), sup(Terminal(')')) ]),
 :refrule   => ref("REF",:symbol,liftchild_parentname),
 :term      => and("TERM",[ sup(Terminal('\'')), RegexRule(r"([^']|'')+"), sup(Terminal('\'')) ], createTermNode),
-:regexrule => and("REGEX",[ sup(Terminal("r(")), RegexRule(r".*?(?=\)r)"), sup(Terminal(")r")) ]), # r(...)r to prevent escaping issues with '(', ')' within the regex, '"' has the same issue but is even weirder because we want to parse a string "... r"..." ..." would then actually have to be input as "... r\"...\" ..." and within the regex "... r\" \\" \" ..."
+:regexrule => and("REGEX",[ sup(Terminal("r(")), RegexRule(r".*?(?=\)r)"), sup(Terminal(")r")) ],liftchild_parentname), # r(...)r to prevent escaping issues with '(', ')' within the regex, '"' has the same issue but is even weirder because we want to parse a string "... r"..." ..." would then actually have to be input as "... r\"...\" ..." and within the regex "... r\" \\" \" ..."
 
-
-:action    => and("ACTION",[sup(Terminal('{')), RegexRule(r"[^}]*"), sup(Terminal('}'))]),
+:action    => and("ACTION",[sup(Terminal('{')), RegexRule(r"[^}]*"), sup(Terminal('}'))],liftchild_parentname),
 
 :space     => RegexRule(r"[ \t]*"),
 :endofline => or([Terminal("\r\n"), Terminal('\r'), Terminal('\n'), Terminal(';')]),
 :symbol    => RegexRule("SYM",r"[a-zA-Z_][a-zA-Z0-9_]*"),
 ))
 
-const testtext = """ 
-foo => bar & baz|foobar | '''foobar'''
+######################################
+# TRANSFORMS FOR THIS GRAMMARGRAMMAR #
+######################################
+
+togrammar(node, children, ::MatchRule{:default}) = (warn("Unmatched transform: $node"); children)
+togrammar(node, children, ::MatchRule{:TERM}) = Terminal(node.value)
+togrammar(node, children, ::MatchRule{:REGEX}) = RegexRule(Regex(node.value))
+togrammar(node, children, ::MatchRule{:REF}) = ReferencedRule(Symbol(node.value))
+togrammar(node, children, ::MatchRule{:ACTION}) = node.value
+function togrammar(node, children, ::MatchRule{:SINGLE})
+  node = children[1]
+#  if length(children)==2 # action specification exists
+#    action = children[2]
+#    if isa(action,AbstractString)
+#      node.name = action
+#    else
+#      # execute action on evanescent node
+#    end
+#  end
+  return node
+end
+togrammar(node, children, ::MatchRule{:*}) = ZeroOrMoreRule(children[1])
+togrammar(node, children, ::MatchRule{:?}) = OptionalRule(children[1])
+togrammar(node, children, ::MatchRule{:+}) = OneOrMoreRule(children[1])
+togrammar(node, children, ::MatchRule{:-}) = SuppressRule(children[1])
+togrammar(node, children, ::MatchRule{:more}) = Vector{Rule}(children)
+function togrammar(node, children, ::MatchRule{:AND})
+  list = Vector{Rule}()
+  push!(list,children[1])
+  append!(list,children[2])
+  AndRule(list)
+end
+function togrammar(node, children, ::MatchRule{:OR})
+  list = Vector{Rule}()
+  push!(list,children[1])
+  append!(list,children[2])
+  OrRule(list)
+end
+togrammar(node, children, ::MatchRule{:SYM}) = Symbol(node.value)
+togrammar(node, children, ::MatchRule{:RULE}) = (children[1],children[2])
+togrammar(node, children, ::MatchRule{:ALLRULES}) = Grammar(Dict(children))
+
+###########
+# TESTING #
+###########
+
 """
+`grammargrammar` parses `grammargrammar_string` such that when transformed with `transform(togrammar,ast)` again `grammmargrammmar` results. This is a consistency check and allows to understand what happens in the `grammargrammar` construction in a more legible form.
+"""
+const grammargrammar_string = """
+start => -(*(emptyline)) & *(ruleline) {"ALLRULES"}
+line => emptyline | rule
+emptyline => space & endofline
+rule => symbol & -(space) & '=>' & -(space) & definition & -(emptyline)
+
+definition => andnode | symbol
+andnode => definition & -(space) & '&' & -(space) & definition
+
+space => r([ \t]*)r
+endofline => '\r\n' | '\r' | '\n'
+symbol => r(\w+)r
+"""
+
