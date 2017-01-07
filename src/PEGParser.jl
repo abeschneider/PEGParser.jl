@@ -6,7 +6,7 @@ export ParserData, MatchRule
 export ?, list, parseGrammar, parseDefinition
 
 #using Compat
-import Base: show, parse
+import Base: show, parse, ==
 import Base: +, |, *, ^, >, -, !, integer, float # TODO: these should not even conflict with Base
 
 function no_action(rule, value, first, last, children)
@@ -19,6 +19,7 @@ type MatchRule{T} end
 
 include("rules.jl")
 include("grammar.jl")
+include("comparison.jl")
 include("grammarparsing.jl")
 include("Node.jl")
 include("transform.jl")

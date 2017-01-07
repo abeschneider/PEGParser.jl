@@ -144,7 +144,7 @@ end
 function showRule(io::IO,name::AbstractString, def::AbstractString, action::AbstractString) 
   namestring = ""
   if name != ""
-    namestring = "$name => "
+    namestring = "$name: "
   end
   actionstring = ""
   if action != string(no_action)
@@ -155,7 +155,7 @@ end
 function showRuleDouble(io::IO,name::AbstractString, def::AbstractString, action::AbstractString) 
   namestring = ""
   if name != ""
-    namestring = "$name => "
+    namestring = "$name: "
   end
   actionstring = ""
   parenth = ""
