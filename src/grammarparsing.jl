@@ -1,149 +1,147 @@
-###################
-# parseDefinition #
-###################
+###########
+# ACTIONS #
+###########
+
+function createRegexNode(rule, value, first, last, children)
+  return Node("REGEX", children[1].value, first, last, children[1].children, children[1].ruleType)
+end
+function createActionNode(rule, value, first, last, children)
+  return Node("ACTION", children[1].value, first, last, children[1].children, children[1].ruleType)
+end
+function createRefNode(rule, value, first, last, children)
+  return Node("REF", children[1].value, first, last, children[1].children, children[1].ruleType)
+end
+function createTermNode(rule, value, first, last, children)
+  disescapedcontent = replace(children[1].value, "''", "'")
+  return Node("TERM", disescapedcontent, first, last, [], Terminal)
+end
+
+###########################################################
+# HANDCONSTRUCTION OF THE GRAMMAR TO PARSE GRAMMARSTRINGS #
+###########################################################
+
+# legibility
+sup = SuppressRule
+ref = ReferencedRule
+and = AndRule
+or  = OrRule
 
 """
-    parseDefinition(name, expr, ParserData)
-returns the `Rule` object corresponding to the expr in the expression block given to `parseGrammar` (see there for more details). Overloading of this function allows to specify which exprs get turned into which rules.
+The grammar to parse grammars. For obvious reasons this has to be constructed "by hand" from constructors, as it is needed itself for the parsing of grammar strings. `grammargrammar_string` is a consistency check and parses to grammargrammar - but only when grammargrammar already exists for its parsing.
 """
-# FIXME: There is a weird mismatch in the parsers and parseDefinition..
-# should they really be different? if not, parseDefinition might need
-# to be changed to allow for arrays to be passed in
-function parseDefinition(name::AbstractString, expr::Expr, pdata::ParserData)
-  rule = EmptyRule()
+const grammargrammar = Grammar(Dict{Symbol,Any}(
+:start     => and([ sup(ZeroOrMoreRule(ref(:emptyline))), ZeroOrMoreRule("ALLRULES",ref(:ruleline)) ],liftchild),
 
-  # if it's a macro (e.g. r"regex", then we want to expand it first)
-  if expr.head === :macrocall
-    # FIXME: using an evil eval
-    rule = parseDefinition(name, eval(expr), pdata)
-  elseif expr.head === :curly
-    rule = parseDefinition(name, expr.args[1], pdata)
-    rule.action = expand_names(expr.args[2])
-  else
-    parser = get(pdata.parsers, expr.args[1], nothing)
+:emptyline => and( sup(ref(:space)), ref(:endofline) ),
+:ruleline  => and([ sup(ref(:space)), ref(:rule), ZeroOrMoreRule(sup(ref(:emptyline))) ],liftchild),
+:rule      => and("RULE",[ ref(:symbol), sup(ref(:space)), sup(Terminal("=>")), sup(ref(:space)), ref(:definition)]),
 
-    if parser !== nothing
-      rule = parser(name, pdata, expr.args[2:end])
+:definition=> or([ ref(:double), ref(:single) ]), # from left to right: ' can contain ' => parse order
+
+:single    => and("SINGLE", or([ref(:parenrule),ref(:zeromorerule),ref(:onemorerule),ref(:optionalrule),ref(:suppressrule),ref(:regexrule),ref(:term),ref(:refrule)]), OptionalRule(and([sup(ref(:space)),ref(:action)],liftchild),liftchild) ), # only single token rules can have associated actions (-> unique interpretation)
+:double    => or([ref(:orrule),ref(:andrule)]), # 'and' groups stronger than 'or'
+
+:parenrule => and("PAREN",[ sup(Terminal('(')), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
+:orrule    => and("OR",[ or(ref(:andrule),ref(:single)), OneOrMoreRule("more",and([ sup(ref(:space)), sup(Terminal('|')), sup(ref(:space)), or(ref(:andrule),ref(:single)) ],liftchild)) ]),
+:andrule   => and("AND",[ ref(:single), OneOrMoreRule("more",and([ sup(ref(:space)), sup(Terminal('&')), sup(ref(:space)), ref(:single) ],liftchild)) ]),
+:zeromorerule => and("*",[ sup(Terminal("*(")), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
+:onemorerule  => and("+",[ sup(Terminal("+(")), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
+:optionalrule => and("?",[ sup(Terminal("?(")), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
+:suppressrule => and("-",[ sup(Terminal("-(")), sup(ref(:space)), ref(:definition), sup(ref(:space)), sup(Terminal(')')) ]),
+:refrule   => ref(:symbol,createRefNode),
+:term      => and([ sup(Terminal('\'')), RegexRule(r"([^']|'')+"), sup(Terminal('\'')) ], createTermNode),
+:regexrule => and([ sup(Terminal("r(")), RegexRule(r".*?(?=\)(?=r))"), sup(Terminal(")r")) ],createRegexNode), # r(...)r to prevent escaping issues with '(', ')' within the regex, '"' has the same issue but is even weirder because we want to parse a string "... r"..." ..." would then actually have to be input as "... r\"...\" ..." and within the regex "... r\" \\" \" ..."
+
+:action    => and([sup(Terminal('{')), RegexRule(r"[^}]*"), sup(Terminal('}'))],createActionNode),
+
+:space     => RegexRule(r"[ \t]*"),
+:endofline => or([Terminal("\r\n"), Terminal('\r'), Terminal('\n'), Terminal(';')]),
+:symbol    => RegexRule("SYM",r"[a-zA-Z_][a-zA-Z0-9_]*"),
+))
+
+######################################
+# TRANSFORMS FOR THIS GRAMMARGRAMMAR #
+######################################
+
+togrammar(node, children, ::MatchRule{:default}) = (warn("Unmatched transform: $node"); children)
+togrammar(node, children, ::MatchRule{:PAREN}) = children[1]
+togrammar(node, children, ::MatchRule{:TERM}) = Terminal(node.value)
+togrammar(node, children, ::MatchRule{:REGEX}) = RegexRule(Regex(node.value))
+togrammar(node, children, ::MatchRule{:REF}) = ReferencedRule(Symbol(node.value))
+togrammar(node, children, ::MatchRule{:ACTION}) = node.value
+function togrammar(node, children, ::MatchRule{:SINGLE})
+  node = children[1]
+  if length(children)==2 # action specification exists
+    action = parse(children[2])
+    if isa(action,AbstractString)
+      node.name = action
+    elseif isa(action,Function)
+      node.action = action
+    elseif isa(action,Expr)
+      node.action = eval(action)
+    elseif isa(action,Symbol)
+      node.action = getfield(PEGParser,action)
+    else
+      error("Unexpected action type $(typeof(action)): $action")
     end
   end
-
-  return rule
+  return node
 end
-
-function parseDefinition(name::AbstractString, value::Union{AbstractString,Char}, pdata::ParserData)
-  return Terminal(name, value)
+togrammar(node, children, ::MatchRule{:*}) = ZeroOrMoreRule(children[1])
+togrammar(node, children, ::MatchRule{:?}) = OptionalRule(children[1])
+togrammar(node, children, ::MatchRule{:+}) = OneOrMoreRule(children[1])
+togrammar(node, children, ::MatchRule{:-}) = SuppressRule(children[1])
+togrammar(node, children, ::MatchRule{:more}) = Vector{Rule}(children)
+function togrammar(node, children, ::MatchRule{:AND})
+  list = Vector{Rule}()
+  push!(list,children[1])
+  append!(list,children[2])
+  AndRule(list)
 end
-
-function parseDefinition(name::AbstractString, sym::Symbol, pdata::ParserData)
-  fn = get(pdata.parsers, sym, nothing)
-
-  if fn !== nothing
-    return fn(name, pdata, [])
-  end
-
-  return ReferencedRule(name, sym)
+function togrammar(node, children, ::MatchRule{:OR})
+  list = Vector{Rule}()
+  push!(list,children[1])
+  append!(list,children[2])
+  OrRule(list)
 end
-
-function parseDefinition(name::AbstractString, range::UnitRange, pdata::ParserData)
-  values = [Terminal(value) for value in range];
-  return OrRule(name, values);
-end
-
-function parseDefinition(name::AbstractString, regex::Regex, pdata::ParserData)
-  # TODO: Need to do this to ensure we always match at the beginning,
-  # but there should be a safer way to do this
-  modRegex = Regex("^$(regex.pattern)")
-  return RegexRule(name, modRegex)
-end
-
-# get_children
-get_children(rule::Rule) = []
-get_children(rule::AndRule) = rule.values
-get_children(rule::OrRule) = rule.values
+togrammar(node, children, ::MatchRule{:SYM}) = Symbol(node.value)
+togrammar(node, children, ::MatchRule{:RULE}) = (children[1],children[2])
+togrammar(node, children, ::MatchRule{:ALLRULES}) = Grammar(Dict(children))
 
 ###########
-# parsers #
+# TESTING #
 ###########
-function +(name::AbstractString, pdata::ParserData, args::Array)
-  if length(args) > 1
-    # Addition can contain multiple entries
-    values::Array{Rule} = [parseDefinition("$(name)_$i", arg, pdata) for (i, arg) in enumerate(args)]
-    return AndRule(name, values)
-  else
-    # it's prefix, so it maps to one or more rule
-    return OneOrMoreRule(name, parseDefinition("$(name)_values", args[1], pdata))
-  end
-end
 
-function |(name::AbstractString, pdata::ParserData, args::Array)
-  left = parseDefinition("$(name)_1", args[1], pdata)
-  right = parseDefinition("$(name)_2", args[2], pdata)
-  return OrRule(name, left, right)
-end
+"""
+`grammargrammar` parses `grammargrammar_string` such that when transformed with `transform(togrammar,ast)` again `grammmargrammmar` results. This is a consistency check and allows to understand what happens in the `grammargrammar` construction in a more legible form.
+"""
+const grammargrammar_string = """
+start      => (-(*(emptyline)) & *(ruleline) {"ALLRULES"}) {liftchild}
 
-function *(name::AbstractString, pdata::ParserData, args::Array)
-  if length(args) == 1
-    # it's a prefix, so it maps to zero or more rule
-    return ZeroOrMoreRule(parseDefinition(name, args[1], pdata))
-  end
-end
+emptyline  => -(space) & endofline
+ruleline   => ( -(space) & rule & *(-(emptyline)) ) {liftchild}
+rule       => ( symbol & -(space) & -('=>') & -(space) & definition ) {"RULE"}
 
-function ^(name::AbstractString, pdata::ParserData, args::Array)
-  # FIXME: not sure this is correct..
-  count = args[2]
-  return MultipleRule(args[1], count.args[1], count.args[2])
-end
+definition => double | single
 
-function ?(name::AbstractString, pdata::ParserData, args::Array)
-  return OptionalRule(parseDefinition(name, args[1], pdata))
-end
+single     => ( (parenrule | zeromorerule | onemorerule | optionalrule | suppressrule | regexrule | term | refrule) & ?((-(space) & action) {liftchild}) {liftchild} ) {"SINGLE"}
+double     => orrule | andrule
 
-function >(name::AbstractString, pData::ParserData, args::Array)
-    if length(args) == 1
-        return LookAheadRule(name, parseDefinition("$(name)_value", args[1], pData))
-    end
-end
+parenrule  => ( -('(') & -(space) & definition & -(space) & -(')') ) {"PAREN"}
+orrule     => ( (andrule | single) & +( (-(space) & -('|') & -(space) & (andrule|single)){liftchild} ){"more"} ) {"OR"}
+andrule    => (            single  & +( (-(space) & -('&') & -(space) &          single ){liftchild} ){"more"} ) {"AND"}
+zeromorerule   => ( -('*(') & -(space) & definition & -(space) & -(')') ){"*"}
+onemorerule    => ( -('+(') & -(space) & definition & -(space) & -(')') ){"+"}
+optionalrule   => ( -('?(') & -(space) & definition & -(space) & -(')') ){"?"}
+suppressrule   => ( -('-(') & -(space) & definition & -(space) & -(')') ){"-"}
+refrule    => symbol {createRefNode}
+term       => ( -('''') & r(([^']|'')+)r & -('''') ) {createTermNode}
+regexrule  => ( -('r(') & r(.*?(?=\\)(?=r)))r & -(')r') ) {createRegexNode} 
 
-function -(name::AbstractString, pdata::ParserData, args::Array)
-  if length(args) == 1
-    return SuppressRule(name, parseDefinition("$(name)_value", args[1], pdata))
-  end
-end
+action     => (-('{') & r([^}]*)r & -('}')) {createActionNode}
 
-function list(name::AbstractString, pdata::ParserData, args::Array)
-  entry = parseDefinition("$(name)_entry", args[1], pdata)
-  delim = parseDefinition("$(name)_delim", args[2], pdata)
+space      => r([ \\t]*)r
+endofline  => '\r\n' | '\r' | '\n' | ';'
+symbol     => r([a-zA-Z_][a-zA-Z0-9_]*)r {"SYM"}
+"""
 
-  if length(args) > 2
-    return ListRule(name, entry, delim, args[3])
-  end
-
-  return ListRule(name, entry, delim)
-end
-
-function !(name::AbstractString, pdata::ParserData, args::Array)
-  entry = parseDefinition("$(name)_entry", args[1], pdata)
-  return NotRule(name, entry)
-end
-
-function empty(name::AbstractString, pdata::ParserData, args::Array)
-  return EmptyRule(name)
-end
-
-function eof(name::AbstractString, pdata::ParserData, args::Array)
-  return EndOfFileRule(name)
-end
-
-function integer(name::AbstractString, pdata::ParserData, args::Array)
-  return IntegerRule(name)
-end
-
-function float(name::AbstractString, pdata::ParserData, args::Array)
-  return FloatRule(name)
-end
-
-# TODO: check if actually being used
-+(a::Rule, b::Rule) = AndRule([a, b]);
-+(a::AndRule, b::AndRule) = AndRule(append!(a.values, b.values));
-+(a::AndRule, b::Rule) = AndRule(push!(a.values, b));
-+(a::Rule, b::AndRule) = AndRule(push!(b.values, a));

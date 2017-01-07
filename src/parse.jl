@@ -155,7 +155,6 @@ function parse_newcachekey(grammar::Grammar, rule::Terminal, text::AbstractStrin
   return (nothing, pos, ParseError("'$(text[pos:len])' does not match '$(rule.value)'. At pos: $pos"))
 end
 
-# TODO: look into making this more streamlined
 function parse_newcachekey(grammar::Grammar, rule::OneOrMoreRule, text::AbstractString, pos::Int, cache)
   firstPos = pos
   (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
@@ -185,7 +184,6 @@ function parse_newcachekey(grammar::Grammar, rule::ZeroOrMoreRule, text::Abstrac
 
   error = nothing
   while error == nothing
-    # FIXME: this was an error and now untested
     (child, pos, error) = parse(grammar, rule.value, text, pos, cache)
 
     if error === nothing && child !== nothing

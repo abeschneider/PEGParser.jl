@@ -16,19 +16,13 @@ immutable Node
     last::Int
     children::Array #::Array{Node}
     ruleType::Type
-    sym::Any
-
-# This always exists by default
-#    Node(node::Node) =
-#        new(node.name, node.value, node.first, node.last, node.children, node.ruleType, node.sym)
-
-    Node(name::AbstractString, value::AbstractString, first::Int, last::Int, children::Array, ruleType::Type) =
-     new(name,                 value,                 first,      last,      children,        ruleType,
-            length(name)==0 ? nothing : symbol(name))
 end
-
 Node(name::AbstractString, value::AbstractString, first::Int, last::Int, typ) =
     Node(name, value, first, last, [], typ)
+
+########
+# SHOW #
+########
 
 show{T}(io::IO, val::T, indent) = println(io, "$val ($(typeof(val)))")
 

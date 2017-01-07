@@ -4,6 +4,7 @@
 
 abstract Rule
 
+
 type Terminal <: Rule
   name::AbstractString
   value::AbstractString
@@ -11,12 +12,14 @@ type Terminal <: Rule
 end
 Terminal(name::AbstractString, value) = Terminal(name, string(value), no_action)
 
+
 type ReferencedRule <: Rule
   name::AbstractString
   symbol::Symbol
   action
 end
 ReferencedRule(name::AbstractString, symbol::Symbol) = ReferencedRule(name, symbol, no_action)
+
 
 type AndRule <: Rule
   name::AbstractString
@@ -26,16 +29,18 @@ end
 AndRule(name::AbstractString, values::Array{Rule}) = AndRule(name, values, no_action)
 AndRule(name::AbstractString, left::Rule, right::Rule) = AndRule(name, [left, right], no_action)
 
+
 type OrRule <: Rule
   name::AbstractString
   values::Array{Rule}
   action
 end
-OrRule(name::AbstractString, rules::Array) = OrRule(name,rules,or_default_action)
-OrRule(name::AbstractString, left::OrRule, right::OrRule) = OrRule(name, append!(left.values, right.values), or_default_action)
-OrRule(name::AbstractString, left::OrRule, right::Rule) = OrRule(name, push!(left.values, right), or_default_action)
-OrRule(name::AbstractString, left::Rule, right::OrRule) = OrRule(name, [left, right], or_default_action)
-OrRule(name::AbstractString, left::Rule, right::Rule) = OrRule(name, [left, right], or_default_action)
+OrRule(name::AbstractString, rules::Array) = OrRule(name,rules,liftchild)
+OrRule(name::AbstractString, left::OrRule, right::OrRule) = OrRule(name, append!(left.values, right.values), liftchild)
+OrRule(name::AbstractString, left::OrRule, right::Rule) = OrRule(name, push!(left.values, right), liftchild)
+OrRule(name::AbstractString, left::Rule, right::OrRule) = OrRule(name, [left, right], liftchild)
+OrRule(name::AbstractString, left::Rule, right::Rule) = OrRule(name, [left, right], liftchild)
+
 
 type OneOrMoreRule <: Rule
   name::AbstractString
@@ -43,11 +48,13 @@ type OneOrMoreRule <: Rule
   action
 end
 
+
 type ZeroOrMoreRule <: Rule
   name::AbstractString
   value::Rule
   action
 end
+
 
 type MultipleRule <: Rule
   name::AbstractString
@@ -58,6 +65,7 @@ type MultipleRule <: Rule
 end
 MultipleRule(name::AbstractString, value::Rule, minCount::Int, maxCount::Int) = MultipleRule(name, value, minCount, maxCount, no_action)
 
+
 type RegexRule <: Rule
   name::AbstractString
   value::Regex
@@ -65,11 +73,13 @@ type RegexRule <: Rule
 end
 RegexRule(name::AbstractString, value::Regex) = RegexRule(name, value, no_action)
 
+
 type OptionalRule <: Rule
   name::AbstractString
   value::Rule
   action
 end
+
 
 type LookAheadRule <: Rule
     name::AbstractString
@@ -77,11 +87,13 @@ type LookAheadRule <: Rule
     action
 end
 
+
 type SuppressRule <: Rule
   name::AbstractString
   value::Rule
   action
 end
+
 
 type ListRule <: Rule
   name::AbstractString
@@ -92,6 +104,7 @@ type ListRule <: Rule
 end
 ListRule(name::AbstractString, entry::Rule, delim::Rule, min::Int=1) = ListRule(name, entry, delim, min, no_action)
 
+
 type NotRule <: Rule
   name
   entry
@@ -99,26 +112,34 @@ type NotRule <: Rule
 end
 NotRule(name::AbstractString, entry::Rule) = NotRule(name, entry, no_action)
 
+
 type EndOfFileRule <: Rule
   name::AbstractString
   action
 end
 
-# empty rule is also accepted and never consumes
+
+"""
+    EmptyRule(name,action)
+is a rule that never consumes
+"""
 type EmptyRule <: Rule
   name
   action
 end
+
 
 type IntegerRule <: Rule
   name::AbstractString
   action
 end
 
+
 type FloatRule <: Rule
   name::AbstractString
   action
 end
+
 
 ################
 # Constructors #

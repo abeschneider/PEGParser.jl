@@ -1,3 +1,5 @@
+type MatchRule{T} end
+
 # default transform is to do nothing
 transform{T}(fn::Function, value::T) = value
 
@@ -8,8 +10,8 @@ function transform(fn::Function, node::Node)
     transformed = transform(fn, node.children)
   end
 
-  if method_exists(fn, (Node, Any, MatchRule{node.sym}))
-    label = MatchRule{node.sym}()
+  if method_exists(fn, (Node, Any, MatchRule{Symbol(node.name)}))
+    label = MatchRule{Symbol(node.name)}()
   else
     label = MatchRule{:default}()
   end
