@@ -42,7 +42,8 @@ function parse(grammar::Grammar, text::AbstractString; cache=nothing, start=:sta
   (ast, pos, error) = parse(grammar, rule, text, 1, cache)
 
   if pos < length(text) + 1
-    error = ParseError("Entire string did not match at pos: $pos")
+    sequence = text[pos:min(length(text)+1,pos+15)]*"..."
+    error = ParseError("Entire string did not match at pos: $pos ($sequence)")
   end
 
   return (ast, pos, error)
@@ -117,7 +118,7 @@ function parse_newcachekey(grammar::Grammar, rule::OrRule, text::AbstractString,
   end
 
   # give error
-  return (nothing, pos, ParseError("No matching branches at pos: $pos"))
+  return (nothing, pos, ParseError("No match (OneOrMoreRule) at pos: $pos"))
 end
 
 function parse_newcachekey(grammar::Grammar, rule::AndRule, text::AbstractString, pos::Int, cache)
