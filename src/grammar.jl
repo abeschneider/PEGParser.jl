@@ -10,4 +10,15 @@ function show(io::IO,grammar::Grammar)
   println(")")
 end
 
-Grammar(definition::AbstractString) = transform(togrammar,parse(grammargrammar,definition)[1])
+function Grammar(definition::AbstractString) 
+  (ast,pos,err) = parse(grammargrammar,definition)
+  if err!=nothing
+    throw(err)
+  end
+  transform(togrammar,ast)
+end
+
+function Grammar(definition::AbstractString, refgrammar::Grammar) 
+  newgrammar = Grammar(definition)
+  return Grammar(merge(refgrammar.rules,newgrammar.rules))
+end
