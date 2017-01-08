@@ -1,0 +1,27 @@
+# Code Coverage
+*.jl.cov
+*.jl.*.cov
+*.jl.*.html
+*.jl.mem
+amber.png
+emerald.png
+glass.png
+ruby.png
+snow.png
+updown.png
+gcov.css
+index-sort-f.html
+index-sort-l.html
+index.html
+lcov.info
+test/coverage_run.out
+
+# VIM
+*.swo
+*.swp
+
+# ctags
+tags
+
+# Git
+*.orig

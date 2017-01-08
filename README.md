@@ -2,65 +2,66 @@
 
 # PEGParser
 
-PEGParser is a PEG Parser for Julia with Packrat capabilties. PEGParser was inspired by pyparsing, parsimonious, boost::spirit, as well as several others.
+PEGParser is a parsing library for Parsing Expression Grammars (PEG) in Julia. It was inspired by pyparsing, parsimonious, boost::spirit, as well as several others. The original design was set up by Abe Schneider in 2014. As of January 2017 Henry Schurkus has reworked major parts of the library design. With the redesign also came a change of the API for easier and less error prone use. Below we describe the new design which takes grammar declarations in the form of (multiline) strings. The previous design relied heavily on the specific parsing logic of the julia language and should therefore be considered deprecated.
+
+# Super Quick Tutorial For The Very Busy
+A parser takes a string and a grammar specification to turn the former into a computable structure. PEGParser does this by first parsing (`parse(grammar,string)`) the string into an Abstract Syntax Tree (AST) and then transforming this AST into the required structure (`transform(function,AST)`).
+
 ## Defining a grammar
 
-To define a grammar you can write:
+A grammar can be defined as:
 
 ```julia
-@grammar <name> begin
+Grammar("""
   rule1 = ...
   rule2 = ...
   ...
-end
+""")
 ```
 
-### Allowed rules
+where the following rules can be used:
 
-The following rules can be used:
-* Terminals: Strings and characters
-* Or: `a | b | c`
-* And: `a + b + c`
-* Grouping: `(a + b) | (c + d)`
-* Optional: ?(a + b)
-* One or more: `+((a + b) | (c + d))`
-* Zero or more: `*((a + b) | (c + d))`
-* Look ahead: `a > (b + c)`
-* Regular expressions: `r"[a-zA-Z]+"`
-* Lists: `list(rule, delim)` *or* `list(rule, delim, min=1)`
-* Suppression: `-rule`
-* Semantic action: `rule { expr }`
+* References to other rules: `theotherrule`
+* Terminals: `'a'` (must match literally)
+* Or: `rule1 | rule2 | rule3` (the first rule that matches wins)
+* And: `rule1 & rule2 & rule3` (the rules are matched one after the other (`&` groups stronger than `|`)
+* Grouping: `(rule1 + rule2) | (rule3 + rule4)`
+* Optional: `?(rule1)` (is matched if possible, but counts as matched anyways)
+* One or more: `+(rule1)` (is matched as often as possible, but has to be matched at least once)
+* Zero or more: `*(rule1)` (is matched as often as possible, but counts as matched even if never matched)
+* Regular expressions: `r([a-zA-Z]+)r` (matches whatever the regex between `r(` and `)r` matches)
+* Suppression: `-(rule1)` (the rule has to be matched but yields no node to the AST)
+* Semantic action: `rule{ expr }` (uses expr to create the node instead of the default `no_action`; see below for more information)
 
-For semantic actions, the `expr` may use the variables: `node`, `value`, `first`, `last`, and `children`. The `value` variable has a corresponding alias `_0` and each element of `children` `_i`, where `i` is the index into `children`. See below for examples using this.
+The argument to `Grammar()` is a String, where line ends or semicoli (;) can be used to separate rules.
+All grammars by default use `start` as the starting rule. You can specify a different starting rule in the `parse` function if you desire.
 
-#### TODO
-Multiple: `(a+b)^(3, 5)`
+### Example 1
+Note: All these examples and more can be found in the examples folder of PEGParser.
 
-## Example 1
 Let's start by creating a simple calculator that can take two numbers and an operator to give a result.
 
 We first define the grammar:
 ```julia
-@grammar calc1 begin
-  start = number + op + number
-  op = plus | minus
-  number = -space + r"[0-9]+"
-  plus = -space + "+"
-  minus = -space + "-"
-  space = r"[ \t\n\r]*"
-end
+calc1 = Grammar("""
+  start => (number & op & number)
+
+  op => plus | minus
+  number => (-(space) & r([0-9]+)r) 
+  plus => (-(space) & '+')
+  minus => (-(space) & '-')
+  space => r([ \\t\\n\\r]*)r
+""")
 ```
 
-All grammars by default use `start` as the starting rule. You can specify a different starting rule in the `parse` function if you desire.
-
-The starting rule is composed of two other rules: `number` and `op`. For this calculator, we only allow `+` and `-`. Note, that this could in fact be written more concisely with:
-
-```julia
-op = -space + r"[+-]"
-```
+The starting rule is composed of two other rules: `number` and `op`. For this calculator, we only allow `+` and `-`. 
 
 The `number` rule just matches any digit between 0 to 9. You'll note that spaces appear in front of all terminals. This is because PEGs don't handle spaces automatically.
 
+## Parsing
+`parse(grammar,string)` allows the construction of the AST of `string` according to `grammar`.
+
+### Example 1 continued
 Now we can run this grammar with some input:
 
 ```julia
@@ -68,143 +69,118 @@ Now we can run this grammar with some input:
 println(ast)
 ```
 
-will result in the following output:
+resulting in the following output:
 
 ```
-node(start) {AndRule}
-1: node(number) {AndRule}
-  1: node(number.2) {'4',RegexRule}
-2: node(plus) {AndRule}
-  1: node(plus.2) {'+',Terminal}
-3: node(number) {AndRule}
-  1: node(number.2) {'5',RegexRule}
+node() {PEGParser.AndRule}
+1: node() {PEGParser.AndRule}
+  1: node() {'4',PEGParser.RegexRule}
+2: node() {PEGParser.AndRule}
+  1: node() {'+',PEGParser.Terminal}
+3: node() {PEGParser.AndRule}
+  1: node() {'5',PEGParser.RegexRule}
 ```
 
-Our input is correctly parsed by our input, but we either have to traverse the tree to get out the result, or use change the output of the parse.
+## Transformation
 
-We can change the output of the parse with semantic actions. Every rule already has a semantic action attached to it. Normally it is set to either return a node in the tree or (for the or-rule) give the first child node.
+Finally one transforms the AST to the desired datastructure by first defining an accordingly overloaded actuator function and then calling it recursively on the AST by `transform(function, ast)`.
 
-For example, we can change the `number` rule to emit an actual number:
+### Example 1 continued
+We now have the desired AST for "4+5". For our calculator we do not want to put everything into a datastructure, but actually fold it all up directly into the final result.
+
+For the transformation an actuator function needs to be defined, which dispatches on the name of the nodes. So we first need to give names to the parsed nodes:
 
 ```julia
-number = (-space + r"[0-9]+") { parseint(_1.value) }
+calc1 = Grammar("""
+  start => (number & op & number) {"start"}
+
+  op => (plus | minus) {"op"}
+  number => (-(space) & r([0-9]+)r) {"number"}
+  plus => (-(space) & '+') {"plus"}
+  minus => (-(space) & '-') {"minus"}
+  space => r([ \\t\\n\\r]*)r 
+""")
 ```
-
-The curly-braces after a rule allows either an expression or function to be used as the new action. In this case, the first child (the number, as the space is suppressed), as specified by `_1`, is parsed as an integer.
-
-If we rewrite the grammar fully with actions defined for the rules, we end up with:
-
+leading to the following AST
 ```julia
-@grammar calc1 begin
-  start = (number + op + number) {
-    apply(eval(_2), _1, _3)
-  }
-
-  op = plus | minus
-  number = (-space + r"[0-9]+") {parseint(_1.value)}
-  plus = (-space + "+") {symbol(_1.value)}
-  minus = (-space + "-") {symbol(_1.value)}
-  space = r"[ \t\n\r]*"
-end
-
-data = "4+5"
-(ast, pos, error) = parse(calc1, data)
-println(ast)
+node(start) {PEGParser.AndRule}
+1: node(number) {PEGParser.AndRule}
+  1: node() {'4',PEGParser.RegexRule}
+2: node(plus) {PEGParser.AndRule}
+  1: node() {'+',PEGParser.Terminal}
+3: node(number) {PEGParser.AndRule}
+  1: node() {'5',PEGParser.RegexRule}
 ```
 
-We now get `9` as an answer. Thus, the parse is also doing the calculation. The code for this can be found in `calc1.jl`, with `calc2.jl` providing a more realistic (and useful) calculator.
-
-## Example 2
-
-In `calc3.jl`, you can find a different approach to this problem. Instead of trying to calculate the answer immediately, the full syntax tree is created. This allows it to be transformed into different forms. In this example, we transform the tree into Julia code:
-
+We can now define the actuator function as
 ```julia
-@grammar calc3 begin
-  start = expr
-
-  expr_op = term + op1 + expr
-  expr = expr_op | term
-  term_op = factor + op2 + term
-
-  term = term_op | factor
-  factor = number | pfactor
-  pfactor = (lparen + expr + rparen) { _2 }
-  op1 = add | sub
-  op2 = mult | div
-
-  number = (-space + float) { parsefloat(_1.value) } | (-space + integer) { parseint(_1.value) }
-  add = (-space + "+") { symbol(_1.value) }
-  sub = (-space + "-") { symbol(_1.value) }
-  mult = (-space + "*") { symbol(_1.value) }
-  div = (-space + "/") { symbol(_1.value) }
-
-  lparen = (-space + "(") { _1 }
-  rparen = (-space + ")") { _1 }
-  space = r"[ \n\r\t]*"
-end
+toresult(node,children,::MatchRule{:default}) = node.value
+toresult(node,children,::MatchRule{:number}) = parse(Int,node.value)
+toresult(node,children,::MatchRule{:plus}) = +
+toresult(node,children,::MatchRule{:minus}) = -
+toresult(node,children,::MatchRule{:start}) = children[2](children[1],children[3])
 ```
-
-You will also notice that instead of trying to define `integer` and `float` manually, we are now using pre-defined parsers. Custom parsers can be defined to both make defining new grammars easier as well as add new types of functionality (e.g. maintaining symbol tables).
-
-The grammar is now ready to be used to parse strings:
-
+and recursively apply it to our AST
 ```julia
-(ast, pos, error) = parse(calc3, "3.145+5*(6-4.0)")
+transform(toresult,ast)
 ```
+to obtain the correct result, `9`.
 
-which results in the following AST:
+## Actions
 
-```
-node(start) {ReferencedRule}
-  node(expr_op) {AndRule}
-  1: 3.145 (Float64)
-  2: + (Symbol)
-  3: node(term_op) {AndRule}
-    1: 5 (Int64)
-    2: * (Symbol)
-    3: node(expr_op) {AndRule}
-      1: 6 (Int64)
-      2: - (Symbol)
-      3: 400.0 (Float64)
-```
+Not always does one want to create every node directly as a basic `Node` type. Actions allow to directly act on parts of the AST during its very construction. An action is specified by `{ action }` following any rule. Generally a function (anonymous or explicit) has to be specified which takes the following arguments `(rule, value, firstpos, lastpos, childnodes)` and may return anything which nodes higher up in the AST can work with. 
 
-Now that we have an AST, we can create transforms to convert the AST into Julia code:
-
+As a shorthand just specifying a name as a string, e.g. `"name"`, results in a normal node, but with the specified name set. This is how we did the naming in example 1 above. As a side note: The action `liftchild` just takes the child of the node and returns it on the current level. This is the default action for `|`-rules - whichever child gets matched is returned in place of the `|`-rule as if we had explicitly specified
 ```julia
-toexpr(node, cnodes, ::MatchRule{:default}) = cnodes
-toexpr(node, cnodes, ::MatchRule{:term_op}) = Expr(:call, cnodes[2], cnodes[1], cnodes[3])
-toexpr(node, cnodes, ::MatchRule{:expr_op}) = Expr(:call, cnodes[2], cnodes[1], cnodes[3])
+myOrRule = (rule1 | rule2) {liftchild}
 ```
 
-and to use the transforms:
+### Where do actions apply?
+Actions always apply to the single token preceding them, so in
+* `rule1 {action} & rule2` `action` applies to rule1
+* `rule1 & rule2 {action}` `action` applies to rule2
+* `(rule1 & rule2) {action}` `action` applies to the `&`-rule joining rule1 and rule2.
 
+For another example, in
+* `*(rule) {action}` `action` applies to the `*`-rule
+* `*(rule {action})` `action` applies to `rule`.
+
+### Example 2
+As our calculator is really very simple we could have - instead of first building a named AST and then transforming it - directly parsed the string into the final result by means of actions:
 ```julia
-code = transform(toexpr, ast)
+calc2 = Grammar("""
+  start => (number & op & number){(r,v,f,l,c) -> c[2](c[1],c[3])}
+
+  op => plus | minus
+  number => (-(space) & r([0-9]+)r) {(r,v,f,l,c) -> parse(Int,c[1].value)}
+  plus => (-(space) & '+'){(a...) -> +}
+  minus => (-(space) & '-'){(a...) -> -}
+  space => r([ \\t\\n\\r]*)r
+""")
 ```
+which would have directly resulted in `9` when parsing `parse(calc2, "4+5")`.
 
-to generate the Expr:
+### Example 3
+Actually, the best example for how to parse stuff can be found in the source code itself. In `grammarparsing.jl` we give the grammar used to parse grammar specifications by the user. While it is not actually live code, its consistency with what really happens is ensured by having it be a test in the test suite. Look here if you ever wonder about any specifics of grammar specification.
 
-```
-Expr
-  head: Symbol call
-  args: Array(Any,(3,))
-    1: Symbol +
-    2: Float64 3.145
-    3: Expr
-      head: Symbol call
-      args: Array(Any,(3,))
-        1: Symbol *
-        2: Int64 5
-        3: Expr
-        head: Symbol call
-        args: Array(Any,(3,))
-        typ: Any
-      typ: Any
-  typ: Any
-```
+# An In Depth Guide To The Library
 
-## Caveats
+* The entry point to the library is of course the file `PEGParser.jl` which handles all `import`/`export`ing and includes the other files in order.
+* `rules.jl` defines `Rule` and all its `subtypes`. These typically consist of a `name` (which when constructed with the default constructor is simply `""`), a type-specific `value` and an `action`.
+* `grammar.jl` defines the `Grammar`-type as a dictionary mapping symbols to rules.
+* `comparison.jl` defines comparison functions so that it is possible to check for example if two grammars are the same.
+* `standardactions.jl` defines some utility actions which are often needed, e.g. the above mentioned `liftchild`.
 
-This is still very much a work in progress and doesn't yet have as much test coverage as I would like.
+*after these files are read it is now possible to specify any grammar in the most julia-nique way: By manually stacking constructors into one another.*
 
-The error handling still needs a lot of work. Currently only a single error will be emitted, but the hope is to allow multiple errors to be returned.
+* `node.jl` defines the `Node`-type which makes up any AST. An AST is actually just a top-level node and all its (recursive) children.
+* `parse.jl` defines the generic `parse` function and its children `parse_newcachekey` which are specified for each Rule subtype to handle the recursive parsing of a string by a specified grammar.
+* `transform.jl` defines the `transform` function mentioned above.
+
+*after these files are additionally read it is now possible to also parse and transform a string to a datastructure according to some grammar build by the manual stacking process discussed above*
+
+* Since now all functionality is in principle available, `grammarparsing.jl` defines a grammar to parse grammars by the stacking process to allow the end-user to simply specify his or her grammar as a string.
+
+Note, that some grammar functionality is still only available by direct construction. That is because the consistent definition of such a grammargrammar becomes exponentially more difficult with the number of grammar features.
+
+* `standardrules.jl` defines a grammar `standardrules` consisting only of commonly used rules like `space`, `float`, etc. so that they do not have to be defined by the end user every single time. Instead, the end user can simply join these rules into his or her definition by constructing the grammar as `Grammar("...", standardrules)`

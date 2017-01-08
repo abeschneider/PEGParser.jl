@@ -1,36 +1,37 @@
 using PEGParser
 
-@grammar lispgrammar begin
-  start = cell{ _1 }
-  expr = lst | atom
-  cell = list(expr, space)
-  lst = (lparen + +(cell) + rparen){ _2.children }
-  atom = string | boolean | number | sym
-  boolean = ("#t" | "#f"){ _1 == "#t" ? true : false }
-  number = (-space + float){ parse(Float64, _1.value) } | (-space + integer){ parse(Int, _1.value) }
-  string = (dquote + r"[^\"]*" + dquote){ _2.value }
-  sym = r"[^() ]+"{ symbol(_0) }
+lispgrammar = Grammar("""
+  start => expr { liftchild }
+  expr => lst | atom
 
-  dquote = "\""
-  lparen = "("
-  rparen = ")"
-  space = r"[ \n\r\t]*"
-end
+  lst => (-('(') & lstcontent & -(')')){ liftchild }
+  atom => string | boolean | number | sym
 
-toexpr(node, cvalues, ::MatchRule{:start}) = cvalues
+  lstcontent => (expr & *((-(space) & expr){liftchild}) {"arguments"}) {"list"}
+  string => (-('"') & r([^"]*)r & -('"')){ (r,v,f,l,c) -> c[1].value}
+  boolean => ('#t' | '#f') { (r,v,f,l,c) -> v=="#t" }
+  number => (-(space) & float){liftchild} | (-(space) & int){liftchild}
+  sym => r([^() ]+)r {(r,v,f,l,c) -> getfield(Main,Symbol(v))}
 
-function toexpr(node, cvalues, ::MatchRule{:cell})
-  if length(cvalues) > 1
-    return Expr(:call, cvalues...)
+  space => r([ \\n\\r\\t]*)r
+""",standardrules)
+
+toexpr(node, children, ::MatchRule{:arguments}) = children
+function toexpr(node, children, ::MatchRule{:list})
+  if length(children) == 1
+    return children[1]
   else
-    return cvalues[1]
+    return children[1](children[2]...)
   end
 end
 
 data = "(println \"test: \" (* 10 (- 5 6)))"
+
+println("AST")
+println("===")
 (ast, pos, error) = parse(lispgrammar, data)
 println(ast)
-code = transform(toexpr, ast)
-dump(code)
-println("code: $(code)")
-eval(code)
+
+println("RESULT")
+println("======")
+evaluated = transform(toexpr, ast)

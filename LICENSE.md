@@ -1,7 +1,7 @@
-Cairo.jl is licensed under the MIT License:
+PEGParser.jl is licensed under the MIT License:
 
-> Copyright (c) 2012-2013: Jeff Bezanson, Keno Fischer, Tim Holy, Mike
-> Nolta, Viral Shah, and other contributors.>
+> Copyright (c) since 2014: <Henry Schurkus, Abe Schneider, 
+> and other contributors.>
 
 > Permission is hereby granted, free of charge, to any person obtaining
 > a copy of this software and associated documentation files (the
