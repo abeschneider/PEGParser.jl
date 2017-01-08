@@ -5,7 +5,7 @@
 PEGParser is a parsing library for Parsing Expression Grammars (PEG) in Julia. It was inspired by pyparsing, parsimonious, boost::spirit, as well as several others. The original design was set up by Abe Schneider in 2014. As of January 2017 Henry Schurkus has reworked major parts of the library design. With the redesign also came a change of the API for easier and less error prone use. Below we describe the new design which takes grammar declarations in the form of (multiline) strings. The previous design relied heavily on the specific parsing logic of the julia language and should therefore be considered deprecated.
 
 # Super Quick Tutorial For The Very Busy
-A parser takes a string and a grammar specification to turn the former into a computable structure. PEGParser does this by first parsing (`parse(grammar,string)`) the string into an Abstract Syntax Tree (AST) and then transforming this AST into the required structure (`transform(function,AST`).
+A parser takes a string and a grammar specification to turn the former into a computable structure. PEGParser does this by first parsing (`parse(grammar,string)`) the string into an Abstract Syntax Tree (AST) and then transforming this AST into the required structure (`transform(function,AST)`).
 
 ## Defining a grammar
 
@@ -29,9 +29,9 @@ where the following rules can be used:
 * Optional: `?(rule1)` (is matched if possible, but counts as matched anyways)
 * One or more: `+(rule1)` (is matched as often as possible, but has to be matched at least once)
 * Zero or more: `*(rule1)` (is matched as often as possible, but counts as matched even if never matched)
-* Regular expressions: `r([a-zA-Z]+)r` (matches whatever the regex between r( and )r matches)
+* Regular expressions: `r([a-zA-Z]+)r` (matches whatever the regex between `r(` and `)r` matches)
 * Suppression: `-(rule1)` (the rule has to be matched but yields no node to the AST)
-* Semantic action: `rule{ expr }` (uses expr to create the node instead of the default `no_action`; see below for more)
+* Semantic action: `rule{ expr }` (uses expr to create the node instead of the default `no_action`; see below for more information)
 
 The argument to `Grammar()` is a String, where line ends or semicoli (;) can be used to separate rules.
 All grammars by default use `start` as the starting rule. You can specify a different starting rule in the `parse` function if you desire.
@@ -88,7 +88,7 @@ Finally one transforms the AST to the desired datastructure by first defining an
 ### Example 1 continued
 We now have the desired AST for "4+5". For our calculator we do not want to put everything into a datastructure, but actually fold it all up directly into the final result.
 
-For the transformation an actuator function needs to be defined, which specifies on the name of the nodes. So we first need to give names to the parsed nodes:
+For the transformation an actuator function needs to be defined, which dispatches on the name of the nodes. So we first need to give names to the parsed nodes:
 
 ```julia
 calc1 = Grammar("""
@@ -130,7 +130,7 @@ to obtain the correct result, `9`.
 
 Not always does one want to create every node directly as a basic `Node` type. Actions allow to directly act on parts of the AST during its very construction. An action is specified by `{ action }` following any rule. Generally a function (anonymous or explicit) has to be specified which takes the following arguments `(rule, value, firstpos, lastpos, childnodes)` and may return anything which nodes higher up in the AST can work with. 
 
-As a shorthand just specifying a name as a string, e.g. "name", results in a normal node, but with the specified name set. This is how we did the naming in example 1 above. As a side note: The action `liftchild` just takes the child of the node and returns in on the current level. This is the default action for `|`-rules - whichever child gets matched gets returned at the place of the or rule as if we had explicitly specified
+As a shorthand just specifying a name as a string, e.g. `"name"`, results in a normal node, but with the specified name set. This is how we did the naming in example 1 above. As a side note: The action `liftchild` just takes the child of the node and returns it on the current level. This is the default action for `|`-rules - whichever child gets matched is returned in place of the `|`-rule as if we had explicitly specified
 ```julia
 myOrRule = (rule1 | rule2) {liftchild}
 ```
@@ -140,6 +140,7 @@ Actions always apply to the single token preceding them, so in
 * `rule1 {action} & rule2` `action` applies to rule1
 * `rule1 & rule2 {action}` `action` applies to rule2
 * `(rule1 & rule2) {action}` `action` applies to the `&`-rule joining rule1 and rule2.
+
 For another example, in
 * `*(rule) {action}` `action` applies to the `*`-rule
 * `*(rule {action})` `action` applies to `rule`.
@@ -160,12 +161,12 @@ calc2 = Grammar("""
 which would have directly resulted in `9` when parsing `parse(calc2, "4+5")`.
 
 ### Example 3
-Actually, the best example for how to parse stuff can be found in the source code itself. In `grammarparsing.jl` we give the grammar used to parse grammar specifications by the user. While it not actually live code, its consistency with what really happens is ensured by having it be a test in the test suite. Look here if you ever wonder about any specifics of grammar specification.
+Actually, the best example for how to parse stuff can be found in the source code itself. In `grammarparsing.jl` we give the grammar used to parse grammar specifications by the user. While it is not actually live code, its consistency with what really happens is ensured by having it be a test in the test suite. Look here if you ever wonder about any specifics of grammar specification.
 
 # An In Depth Guide To The Library
 
 * The entry point to the library is of course the file `PEGParser.jl` which handles all `import`/`export`ing and includes the other files in order.
-* `rules.jl` defines `Rule` and all its `subtypes`. These are typically consistent of a `name` (which by default constructor is simply ""), a type-specific `value` and an `action`.
+* `rules.jl` defines `Rule` and all its `subtypes`. These typically consist of a `name` (which when constructed with the default constructor is simply `""`), a type-specific `value` and an `action`.
 * `grammar.jl` defines the `Grammar`-type as a dictionary mapping symbols to rules.
 * `comparison.jl` defines comparison functions so that it is possible to check for example if two grammars are the same.
 * `standardactions.jl` defines some utility actions which are often needed, e.g. the above mentioned `liftchild`.
@@ -180,6 +181,6 @@ Actually, the best example for how to parse stuff can be found in the source cod
 
 * Since now all functionality is in principle available, `grammarparsing.jl` defines a grammar to parse grammars by the stacking process to allow the end-user to simply specify his or her grammar as a string.
 
-Note, that some grammar functionality is still only available by direct construction as a consistent definition of such a grammargrammar becomes exponentially more difficult with the number of grammar features.
+Note, that some grammar functionality is still only available by direct construction. That is because the consistent definition of such a grammargrammar becomes exponentially more difficult with the number of grammar features.
 
-* `standardrules.jl` defines a grammar `standardrules` consisting only of commonly used rules like "space", "float", etc. so that they do not have to be defined by the end user every single time. Instead, the end user can simply join these rules into his or her definition by constructing the grammar as `Grammar("...", standardrules)`
+* `standardrules.jl` defines a grammar `standardrules` consisting only of commonly used rules like `space`, `float`, etc. so that they do not have to be defined by the end user every single time. Instead, the end user can simply join these rules into his or her definition by constructing the grammar as `Grammar("...", standardrules)`
