@@ -42,7 +42,10 @@ function parse(grammar::Grammar, text::AbstractString; cache=nothing, start=:sta
   (ast, pos, error) = parse(grammar, rule, text, 1, cache)
 
   if pos < length(text) + 1
-    sequence = text[pos:min(length(text)+1,pos+15)]*"..."
+    sequence = text[pos:end]
+    if length(text) > pos+15
+      sequence = text[pos:pos+15]*"..."
+    end
     error = ParseError("Entire string did not match at pos: $pos ($sequence)")
   end
 

@@ -1,13 +1,13 @@
 type MatchRule{T} end
 
 # default transform is to do nothing
-transform{T}(fn::Function, value::T) = value
+transform(fn::Function, value) = value
 
 function transform(fn::Function, node::Node)
   if isa(node.children, Array)
-    transformed = [transform(fn, child) for child in node.children]
+    transformedchildren = [transform(fn, child) for child in node.children]
   else
-    transformed = transform(fn, node.children)
+    transformedchildren = transform(fn, node.children)
   end
 
   if method_exists(fn, (Node, Any, MatchRule{Symbol(node.name)}))
@@ -16,5 +16,5 @@ function transform(fn::Function, node::Node)
     label = MatchRule{:default}()
   end
 
-  return fn(node, transformed, label)
+  return fn(node, transformedchildren, label)
 end
