@@ -1,36 +1,16 @@
 using PEGParser
 
-@grammar calc2 begin
-  start = expr{ _1 }
+calc2 = Grammar("""
+  start => (number & op & number){(r,v,f,l,c) -> c[2](c[1],c[3])}
 
-  expr_op = (term + op1 + expr){
-    eval(_2)(_1, _3)
-  }
+  op => plus | minus
+  number => (-(space) & r([0-9]+)r) {(r,v,f,l,c) -> parse(Int,c[1].value)}
+  plus => (-(space) & '+'){(a...) -> +}
+  minus => (-(space) & '-'){(a...) -> -}
+  space => r([ \\t\\n\\r]*)r
+""")
 
-  expr = expr_op | term
+data = "4+5"
 
-  term_op = (factor + op2 + term){
-    eval(_2)(_1, _3)
-  }
-
-  term = term_op | factor
-  factor = number | pfactor
-  pfactor = (-lparen + expr + -rparen){ _1 }
-
-  op1 = add | sub
-  op2 = mult | div
-
-  number = (-space + r"[1-9][0-9]*"){ parse(Int, _1.value) }
-  add = (-space + "+"){ symbol(_1.value) }
-  sub = (-space + "-"){ symbol(_1.value) }
-  mult = (-space + "*"){ symbol(_1.value) }
-  div = (-space + "/"){ symbol(_1.value) }
-
-  lparen = space + "("
-  rparen = space + ")"
-  space = r"[ \n\r\t]*"
-end
-
-data = "4+5*(8+2)"
 (ast, pos, error) = parse(calc2, data)
 println(ast)
